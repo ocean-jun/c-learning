@@ -1,13 +1,16 @@
 /**
  * C-Learning-Lab SQLite 访问层
  *
+ * 使用 Node.js 内置的 node:sqlite (DatabaseSync) —— 零原生依赖,
+ * 不需要编译 better-sqlite3, 任何 Node 22+ 环境开箱即用。
+ *
  * - 数据库文件: database/wengkai.db (不存在则自动创建)
  * - 启动时确保三张表存在 (CREATE TABLE IF NOT EXISTS, 不动已有表结构)
  * - 索引仅在对应列存在时创建(兼容用户提供的不同结构的题库库)
  * - 表结构自适应: 通过 PRAGMA table_info 探测实际列名,
  *   兼容 camelCase / snake_case / 全小写三种命名
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import type {
@@ -25,7 +28,7 @@ const DB_PATH = path.join(DB_DIR, "wengkai.db");
 
 type Row = Record<string, unknown>;
 
-let db: Database.Database | null = null;
+let db: DatabaseSync | null = null;
 let columnCache = new Map<string, Record<string, string>>();
 
 /**
@@ -63,12 +66,12 @@ const TABLE_DDL = [
 ];
 
 /** 打开(或创建)数据库, 并确保三张表与索引就绪 */
-export function getDb(): Database.Database {
+export function getDb(): DatabaseSync {
   if (!db) {
     fs.mkdirSync(DB_DIR, { recursive: true });
-    db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
+    db = new DatabaseSync(DB_PATH);
+    db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA foreign_keys = ON");
     for (const ddl of TABLE_DDL) db.exec(ddl);
     ensureAnswerColumn(db);
     ensureIndexes(db);
@@ -81,7 +84,7 @@ export function getDb(): Database.Database {
  * 兼容旧库: problems 表缺少 answer(参考答案)列时补齐。
  * 新库在 TABLE_DDL 中已包含该列。
  */
-function ensureAnswerColumn(d: Database.Database): void {
+function ensureAnswerColumn(d: DatabaseSync): void {
   try {
     const cols = resolveColumns("problems", ["answer"], d);
     if (!cols.answer) {
@@ -99,7 +102,7 @@ function ensureAnswerColumn(d: Database.Database): void {
  * 自动把 JSON 题库导入数据库(方便 clone 仓库后开箱即用)。
  * 已导入过(表非空)则跳过, 不影响用户自己的题库。
  */
-function ensureInitialData(d: Database.Database): void {
+function ensureInitialData(d: DatabaseSync): void {
   try {
     const { c } = d.prepare("SELECT COUNT(*) AS c FROM problems").get() as { c: number };
     if (c > 0) return;
@@ -111,19 +114,19 @@ function ensureInitialData(d: Database.Database): void {
     const pCol = resolveColumns("problems", [...PROBLEM_LOGICAL, "answer"], d);
     const fields: string[] = [];
     const params: string[] = [];
-    const values: Record<string, unknown>[] = [];
+    const values: Record<string, string | number>[] = [];
     for (const item of items) {
-      const row: Record<string, unknown> = {
-        code: item.code,
-        title: item.title,
-        chapter: item.chapter,
-        description: item.description ?? "",
-        input: item.input ?? "",
-        output: item.output ?? "",
-        sampleInput: item.sampleInput ?? "",
-        sampleOutput: item.sampleOutput ?? "",
+      const row: Record<string, string | number> = {
+        code: String(item.code ?? ""),
+        title: String(item.title ?? ""),
+        chapter: Number(item.chapter ?? 0),
+        description: String(item.description ?? ""),
+        input: String(item.input ?? ""),
+        output: String(item.output ?? ""),
+        sampleInput: String(item.sampleInput ?? ""),
+        sampleOutput: String(item.sampleOutput ?? ""),
       };
-      if (pCol.answer) row.answer = item.answer ?? "";
+      if (pCol.answer) row.answer = String(item.answer ?? "");
       values.push(row);
     }
     for (const logical of Object.keys(values[0])) {
@@ -133,10 +136,14 @@ function ensureInitialData(d: Database.Database): void {
       params.push(`@${logical}`);
     }
     const insert = d.prepare(`INSERT INTO problems (${fields.join(", ")}) VALUES (${params.join(", ")})`);
-    const tx = d.transaction((rows: Record<string, unknown>[]) => {
-      for (const row of rows) insert.run(row);
-    });
-    tx(values);
+    d.exec("BEGIN");
+    try {
+      for (const row of values) insert.run(row);
+      d.exec("COMMIT");
+    } catch (e) {
+      d.exec("ROLLBACK");
+      throw e;
+    }
     console.log(`[db] 已从 wengkai-problems.json 自动导入 ${values.length} 道题`);
   } catch (e) {
     console.warn("[db] 题库自动导入失败:", e);
@@ -144,7 +151,7 @@ function ensureInitialData(d: Database.Database): void {
 }
 
 /** 索引仅在对应列存在时创建(适配用户提供的不同结构的题库库) */
-function ensureIndexes(d: Database.Database): void {
+function ensureIndexes(d: DatabaseSync): void {
   const pCol = resolveColumns("problems", ["chapter"], d);
   if (pCol.chapter) {
     d.exec(`CREATE INDEX IF NOT EXISTS idx_problems_chapter ON problems(${pCol.chapter})`);
@@ -190,7 +197,7 @@ function camelToSnake(name: string): string {
 function resolveColumns(
   table: string,
   logical: string[],
-  d: Database.Database = getDb(),
+  d: DatabaseSync = getDb(),
 ): Record<string, string> {
   const cacheKey = `${table}\u0000${logical.join(",")}`;
   if (!columnCache.has(cacheKey)) {
@@ -414,12 +421,18 @@ export function saveSubmission(
        ${timeCol} = excluded.${timeCol}`,
   );
 
-  const tx = db.transaction(() => {
+  // 单事务: 追加提交记录 + 更新进度
+  let newId: number = 0;
+  db.exec("BEGIN");
+  try {
     const info = insertSub.run(problemId, code);
     upsertProgress.run({ problemId });
-    return Number(info.lastInsertRowid);
-  });
-  const newId = tx();
+    newId = Number(info.lastInsertRowid);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
 
   const submission: Submission =
     listSubmissions(problemId).find((s) => s.id === newId) ?? {

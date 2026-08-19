@@ -7,7 +7,7 @@
  *
  * 用法: node scripts/seed.mjs
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -111,8 +111,8 @@ if (!fs.existsSync(dbPath)) {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 }
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
+const db = new DatabaseSync(dbPath);
+db.exec("PRAGMA journal_mode = WAL");
 if (fs.existsSync(schemaPath)) {
   db.exec(fs.readFileSync(schemaPath, "utf8"));
 }
@@ -128,10 +128,14 @@ const insert = db.prepare(
   `INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput)
    VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput)`,
 );
-const tx = db.transaction((items) => {
-  for (const item of items) insert.run(item);
-});
-tx(SAMPLE_PROBLEMS);
+db.exec("BEGIN");
+try {
+  for (const item of SAMPLE_PROBLEMS) insert.run(item);
+  db.exec("COMMIT");
+} catch (e) {
+  db.exec("ROLLBACK");
+  throw e;
+}
 
 console.log(`[seed] 已写入 ${SAMPLE_PROBLEMS.length} 道示例题 -> ${dbPath}`);
 console.log(`[seed] 提示: 这些是开发调试用示例数据, 正式题库请替换为你的 wengkai.db`);

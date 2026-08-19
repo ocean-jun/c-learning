@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3 是原生模块, 不参与打包, 由 Node 运行时直接 require
-  serverExternalPackages: ["better-sqlite3"],
   turbopack: {
     resolveAlias: {
       // web-tree-sitter 的 Emscripten 代码包含 Node 环境分支,

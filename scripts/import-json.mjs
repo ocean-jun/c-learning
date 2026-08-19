@@ -9,7 +9,7 @@
  * 提示: 应用首次启动时也会在题库为空且 JSON 存在的情况下自动导入,
  *       本脚本用于手动触发或强制重建。
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -23,9 +23,9 @@ if (!fs.existsSync(jsonPath)) {
   process.exit(1);
 }
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const db = new DatabaseSync(dbPath);
+db.exec("PRAGMA journal_mode = WAL");
+db.exec("PRAGMA foreign_keys = ON");
 
 // 确保表结构存在(复用 schema.sql)
 const schemaPath = path.join(root, "database", "schema.sql");
@@ -63,8 +63,9 @@ const insert = db.prepare(
   `INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer)
    VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer)`,
 );
-const tx = db.transaction((list) => {
-  for (const item of list) {
+db.exec("BEGIN");
+try {
+  for (const item of items) {
     insert.run({
       code: item.code,
       title: item.title,
@@ -77,8 +78,11 @@ const tx = db.transaction((list) => {
       answer: item.answer ?? "",
     });
   }
-});
-tx(items);
+  db.exec("COMMIT");
+} catch (e) {
+  db.exec("ROLLBACK");
+  throw e;
+}
 
 const chapters = db
   .prepare("SELECT chapter, COUNT(*) c FROM problems GROUP BY chapter ORDER BY chapter")
