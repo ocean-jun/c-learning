@@ -1,19 +1,19 @@
 @echo off
-chcp 65001 >nul
+chcp 936 >nul
 title C-Learning-Lab
 cd /d "%~dp0"
 
 echo ============================================
-echo   C-Learning-Lab ç¿æºCè¯­è¨€åˆ·é¢˜ç³»ç»Ÿ
+echo   C-Learning-Lab ÎÌâýCÓïÑÔË¢ÌâÏµÍ³
 echo ============================================
 echo.
 
-REM ç­‰å¾… 2 ç§’åŽè‡ªåŠ¨æ‰“å¼€æµè§ˆå™¨
+REM µÈ´ý 3 Ãëºó×Ô¶¯´ò¿ªä¯ÀÀÆ÷
 start "" /min cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:3000"
 
-REM ä½¿ç”¨ pnpm.cmd å¯åŠ¨(é¿å… PowerShell æ‰§è¡Œç­–ç•¥ç¦æ­¢ pnpm.ps1)
+REM Ê¹ÓÃ pnpm.cmd Æô¶¯(±ÜÃâ PowerShell Ö´ÐÐ²ßÂÔ½ûÖ¹ pnpm.ps1)
 call pnpm.cmd dev
 
 echo.
-echo æœåŠ¡å™¨å·²åœæ­¢ã€‚æŒ‰ä»»æ„é”®å…³é—­çª—å£...
+echo ·þÎñÆ÷ÒÑÍ£Ö¹¡£°´ÈÎÒâ¼ü¹Ø±Õ´°¿Ú...
 pause >nul
