@@ -8,8 +8,9 @@
  *   - 绝不删除/清空任何数据, 不影响 submissions / progress 表及其外键
  *
  * 用法: node scripts/import-wengkai.mjs
+ * 注: 使用 Node 内置 node:sqlite, 无需任何原生依赖
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -31,15 +32,25 @@ if (!Array.isArray(problems) || problems.length === 0) {
 
 // 建库(若不存在) + 确保表结构
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
+const db = new DatabaseSync(dbPath);
+db.exec("PRAGMA journal_mode = WAL");
 if (fs.existsSync(schemaPath)) db.exec(fs.readFileSync(schemaPath, "utf8"));
+
+// 兼容旧库: 补充 answer 列(新库已在 schema.sql 中)
+try {
+  const cols = db.prepare("PRAGMA table_info(problems)").all().map((c) => c.name);
+  if (!cols.includes("answer")) {
+    db.exec("ALTER TABLE problems ADD COLUMN answer TEXT NOT NULL DEFAULT ''");
+  }
+} catch {
+  /* 忽略 */
+}
 
 const before = db.prepare("SELECT COUNT(*) AS c FROM problems").get().c;
 
 const upsert = db.prepare(`
-  INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput)
-  VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput)
+  INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer)
+  VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer)
   ON CONFLICT(code) DO UPDATE SET
     title        = excluded.title,
     chapter      = excluded.chapter,
@@ -47,23 +58,29 @@ const upsert = db.prepare(`
     input        = excluded.input,
     output       = excluded.output,
     sampleInput  = excluded.sampleInput,
-    sampleOutput = excluded.sampleOutput
+    sampleOutput = excluded.sampleOutput,
+    answer       = excluded.answer
 `);
-const tx = db.transaction((items) => {
-  for (const it of items) upsert.run(it);
-});
-tx(
-  problems.map(({ code, title, chapter, description, input, output, sampleInput, sampleOutput }) => ({
-    code,
-    title,
-    chapter,
-    description,
-    input,
-    output,
-    sampleInput,
-    sampleOutput,
-  })),
-);
+const rows = problems.map((it) => ({
+  code: String(it.code ?? ""),
+  title: String(it.title ?? ""),
+  chapter: Number(it.chapter ?? 0),
+  description: String(it.description ?? ""),
+  input: String(it.input ?? ""),
+  output: String(it.output ?? ""),
+  sampleInput: String(it.sampleInput ?? ""),
+  sampleOutput: String(it.sampleOutput ?? ""),
+  answer: String(it.answer ?? ""),
+}));
+
+db.exec("BEGIN");
+try {
+  for (const it of rows) upsert.run(it);
+  db.exec("COMMIT");
+} catch (e) {
+  db.exec("ROLLBACK");
+  throw e;
+}
 
 const after = db.prepare("SELECT COUNT(*) AS c FROM problems").get().c;
 const subCount = db.prepare("SELECT COUNT(*) AS c FROM submissions").get().c;
