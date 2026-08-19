@@ -43,6 +43,7 @@ const TABLE_DDL = [
     output        TEXT    NOT NULL DEFAULT '',
     sampleInput   TEXT    NOT NULL DEFAULT '',
     sampleOutput  TEXT    NOT NULL DEFAULT '',
+    answer        TEXT    NOT NULL DEFAULT '',
     createdAt     TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
   )`,
   `CREATE TABLE IF NOT EXISTS submissions (
@@ -69,9 +70,77 @@ export function getDb(): Database.Database {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     for (const ddl of TABLE_DDL) db.exec(ddl);
+    ensureAnswerColumn(db);
     ensureIndexes(db);
+    ensureInitialData(db);
   }
   return db;
+}
+
+/**
+ * 兼容旧库: problems 表缺少 answer(参考答案)列时补齐。
+ * 新库在 TABLE_DDL 中已包含该列。
+ */
+function ensureAnswerColumn(d: Database.Database): void {
+  try {
+    const cols = resolveColumns("problems", ["answer"], d);
+    if (!cols.answer) {
+      d.exec(`ALTER TABLE problems ADD COLUMN answer TEXT NOT NULL DEFAULT ''`);
+      columnCache.clear();
+    }
+  } catch {
+    // 用户提供的题库表可能不允许修改, 忽略
+  }
+}
+
+/**
+ * 首次启动自动导入题库:
+ * 当 problems 表为空且存在 database/wengkai-problems.json 时,
+ * 自动把 JSON 题库导入数据库(方便 clone 仓库后开箱即用)。
+ * 已导入过(表非空)则跳过, 不影响用户自己的题库。
+ */
+function ensureInitialData(d: Database.Database): void {
+  try {
+    const { c } = d.prepare("SELECT COUNT(*) AS c FROM problems").get() as { c: number };
+    if (c > 0) return;
+    const jsonPath = path.join(DB_DIR, "wengkai-problems.json");
+    if (!fs.existsSync(jsonPath)) return;
+    const items = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as Record<string, unknown>[];
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const pCol = resolveColumns("problems", [...PROBLEM_LOGICAL, "answer"], d);
+    const fields: string[] = [];
+    const params: string[] = [];
+    const values: Record<string, unknown>[] = [];
+    for (const item of items) {
+      const row: Record<string, unknown> = {
+        code: item.code,
+        title: item.title,
+        chapter: item.chapter,
+        description: item.description ?? "",
+        input: item.input ?? "",
+        output: item.output ?? "",
+        sampleInput: item.sampleInput ?? "",
+        sampleOutput: item.sampleOutput ?? "",
+      };
+      if (pCol.answer) row.answer = item.answer ?? "";
+      values.push(row);
+    }
+    for (const logical of Object.keys(values[0])) {
+      const actual = pCol[logical] ?? logical;
+      if (fields.includes(actual)) continue;
+      fields.push(actual);
+      params.push(`@${logical}`);
+    }
+    const insert = d.prepare(`INSERT INTO problems (${fields.join(", ")}) VALUES (${params.join(", ")})`);
+    const tx = d.transaction((rows: Record<string, unknown>[]) => {
+      for (const row of rows) insert.run(row);
+    });
+    tx(values);
+    console.log(`[db] 已从 wengkai-problems.json 自动导入 ${values.length} 道题`);
+  } catch (e) {
+    console.warn("[db] 题库自动导入失败:", e);
+  }
 }
 
 /** 索引仅在对应列存在时创建(适配用户提供的不同结构的题库库) */
@@ -104,6 +173,7 @@ const CANDIDATES: Record<string, string[]> = {
   output: ["output"],
   sampleInput: ["sampleInput", "sample_input", "sampleinput"],
   sampleOutput: ["sampleOutput", "sample_output", "sampleoutput"],
+  answer: ["answer"],
   problemId: ["problemId", "problem_id", "problemid"],
   submitTime: ["submitTime", "submit_time", "submittime"],
   submitCount: ["submitCount", "submit_count", "submitcount"],

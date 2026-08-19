@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS problems (
   output        TEXT    NOT NULL DEFAULT '',       -- 输出格式说明
   sampleInput   TEXT    NOT NULL DEFAULT '',       -- 样例输入
   sampleOutput  TEXT    NOT NULL DEFAULT '',       -- 样例输出
+  answer        TEXT    NOT NULL DEFAULT '',       -- 参考答案代码(可选, 题库 JSON 导入时填充)
   createdAt     TEXT    NOT NULL DEFAULT (datetime('now','localtime')) -- 入库时间
 );
 

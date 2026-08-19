@@ -9,13 +9,26 @@
 ## 快速开始
 
 ```bash
-pnpm install          # 安装依赖
+pnpm install          # 安装依赖 (需 Node.js 22+ 与 pnpm)
 pnpm dev              # 启动开发服务器 -> http://localhost:3000
 ```
 
+Windows 也可以直接双击 `start.bat`（自动启动并打开浏览器）。
+
 ## 题库数据
 
-将你的题库文件放入 `database/wengkai.db`（表结构见 `database/schema.sql`，读取层会自动兼容 camelCase / snake_case 字段命名，缺失的表自动补齐）。
+**仓库自带题库**：`database/wengkai-problems.json`（38 道翁恺课程经典题目，含样例与参考答案）。
+首次启动时若题库为空，系统**自动导入**该文件，无需任何操作；之后题目保存在本地 `database/wengkai.db`（含个人刷题进度，不入库）。
+
+也可以替换为自己的题库：
+
+- **方式一（推荐）**：把你的 SQLite 题库文件放入 `database/wengkai.db`（表结构见 `database/schema.sql`，读取层自动兼容 camelCase / snake_case 字段命名，缺失的表自动补齐）
+- **方式二**：提供 `database/wengkai-problems.json`（字段：`code / title / chapter / description / input / output / sampleInput / sampleOutput / answer`），启动时自动导入，或手动执行：
+
+```bash
+node scripts/import-json.mjs           # 题库为空时导入(幂等)
+node scripts/import-json.mjs --force   # 清空现有题目后重新导入(会删除该题库的提交记录与进度)
+```
 
 没有题库文件时应用也能启动（自动创建空库）。开发调试可使用示例种子数据：
 

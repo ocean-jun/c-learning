@@ -43,3 +43,8 @@ next-env.d.ts
 # local database (contains personal progress)
 /database/*.db
 
+
+# sqlite wal/shm ÁÙÊ±ÎÄ¼ş
+/database/*.db-shm
+/database/*.db-wal
+
