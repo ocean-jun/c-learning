@@ -20,11 +20,18 @@ export default async function ProblemPage({ params }: Props) {
 
   const problems = listProblems();
   const submissions = listSubmissions(problem.id);
+  // 最近一次保存/判题的代码, 用于重新打开题目时恢复编辑器内容
+  const lastCode = submissions[0]?.code ?? undefined;
 
   return (
     <div className="flex h-screen flex-col">
       <Header current="problem" />
-      <ProblemClient problems={problems} problem={problem} submissions={submissions} />
+      <ProblemClient
+        problems={problems}
+        problem={problem}
+        submissions={submissions}
+        lastCode={lastCode}
+      />
     </div>
   );
 }

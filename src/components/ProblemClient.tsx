@@ -30,6 +30,8 @@ interface Props {
   problems: ProblemWithStatus[];
   problem: ProblemWithStatus;
   submissions: Submission[];
+  /** 最近一次保存的代码(重新打开题目时恢复编辑器内容) */
+  lastCode?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export default function ProblemClient({
   problems: initialProblems,
   problem: initialProblem,
   submissions: initialSubmissions,
+  lastCode,
 }: Props) {
   const [problems, setProblems] = useState(initialProblems);
   const [problem, setProblem] = useState(initialProblem);
@@ -134,7 +137,13 @@ export default function ProblemClient({
             </button>
           }
         />
-        <CodeEditor problem={problem} onSave={handleSave} onJudge={handleJudge} judging={judging} />
+        <CodeEditor
+          problem={problem}
+          initialCode={lastCode}
+          onSave={handleSave}
+          onJudge={handleJudge}
+          judging={judging}
+        />
         <JudgeResultPanel result={judgeResult} judging={judging} />
       </div>
       <SubmissionList submissions={submissions} />
