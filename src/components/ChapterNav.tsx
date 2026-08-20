@@ -38,7 +38,12 @@ export default function ChapterNav({ chapters, problems }: Props) {
           return (
             <li key={ch.chapter}>
               {first ? (
-                <Link href={`/problems/${first.id}`} className="block">
+                <Link
+                  href={`/problems/${first.id}`}
+                  // 从章节进入题目 = 前进导航
+                  transitionTypes={["nav-forward"]}
+                  className="block"
+                >
                   {item}
                 </Link>
               ) : (

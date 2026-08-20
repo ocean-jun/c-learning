@@ -33,7 +33,8 @@ export default function SubmissionList({ submissions }: Props) {
             return (
               <li
                 key={s.id}
-                className="border-b border-border/50 px-4 py-2.5 last:border-b-0"
+                className="animate-item-in border-b border-border/50 px-4 py-2.5 last:border-b-0"
+                style={{ animationDelay: `${Math.min(i * 30, 240)}ms` }}
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted">第 {submissions.length - i} 次提交</span>

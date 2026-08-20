@@ -14,7 +14,9 @@ export default function Header({ current }: { current: "home" | "problem" }) {
       {current === "problem" && (
         <Link
           href="/"
-          className="rounded border border-border px-3 py-1 text-xs text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+          // 返回上一级 = 后退导航, 触发向左滑动过渡
+          transitionTypes={["nav-back"]}
+          className="rounded border border-border px-3 py-1 text-xs text-muted hover:bg-white/5 hover:text-foreground"
         >
           ← 返回首页
         </Link>

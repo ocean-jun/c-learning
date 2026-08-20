@@ -3,6 +3,7 @@
  * 学习进度总览 + 左侧章节导航
  */
 import { getStats, listProblems } from "@/lib/db";
+import { ViewTransition } from "react";
 import Header from "@/components/Header";
 import ChapterNav from "@/components/ChapterNav";
 
@@ -14,12 +15,18 @@ export default function Home() {
   const problems = listProblems();
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen animate-page-in flex-col">
       <Header current="home" />
-      <div className="flex min-h-0 flex-1">
-        <ChapterNav chapters={stats.chapters} problems={problems} />
-        <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-8 py-8">
+      {/* 前进(进入题目)与后退(返回首页)的方向过渡 */}
+      <ViewTransition
+        enter={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "slide-up" }}
+        exit={{ default: "none" }}
+        default="none"
+      >
+        <div className="flex min-h-0 flex-1">
+          <ChapterNav chapters={stats.chapters} problems={problems} />
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-8 py-8">
             <h1 className="mb-1 text-2xl font-semibold">C语言学习进度</h1>
             <p className="mb-6 text-sm text-muted">
               配套翁恺《C语言程序设计》课程 · 数据保存在本机
@@ -111,7 +118,8 @@ export default function Home() {
             </div>
           </div>
         </main>
-      </div>
+        </div>
+      </ViewTransition>
     </div>
   );
 }

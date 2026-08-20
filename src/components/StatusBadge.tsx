@@ -16,9 +16,9 @@ const LABELS: Record<ProblemStatus, string> = {
 export default function StatusBadge({ status }: { status: ProblemStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STYLES[status]}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all duration-300 ${STYLES[status]}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current transition-transform duration-300" />
       {LABELS[status]}
     </span>
   );

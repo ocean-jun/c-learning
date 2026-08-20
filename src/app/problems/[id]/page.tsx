@@ -4,6 +4,7 @@
  * 数据由服务端读取, 交互由 ProblemClient 负责(保存/标记状态)
  */
 import { notFound } from "next/navigation";
+import { ViewTransition } from "react";
 import { getProblemById, listProblems, listSubmissions } from "@/lib/db";
 import Header from "@/components/Header";
 import ProblemClient from "@/components/ProblemClient";
@@ -24,14 +25,21 @@ export default async function ProblemPage({ params }: Props) {
   const lastCode = submissions[0]?.code ?? undefined;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen animate-page-in flex-col">
       <Header current="problem" />
-      <ProblemClient
-        problems={problems}
-        problem={problem}
-        submissions={submissions}
-        lastCode={lastCode}
-      />
+      {/* 前进(从列表进入题目)从右侧滑入, 后退(返回首页)从左侧滑入 */}
+      <ViewTransition
+        enter={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "slide-up" }}
+        exit={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }}
+        default="none"
+      >
+        <ProblemClient
+          problems={problems}
+          problem={problem}
+          submissions={submissions}
+          lastCode={lastCode}
+        />
+      </ViewTransition>
     </div>
   );
 }

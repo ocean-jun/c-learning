@@ -31,7 +31,7 @@ export default function JudgeResultPanel({ result, judging }: Props) {
   const view = STATUS_VIEW[result.status] ?? { label: result.status, cls: "text-muted" };
 
   return (
-    <div className="shrink-0 border-t border-border bg-[#252526] px-4 py-3">
+    <div className="animate-item-in shrink-0 border-t border-border bg-[#252526] px-4 py-3">
       <p className={`mb-2 text-sm font-semibold ${view.cls}`}>{view.label}</p>
 
       {result.status === "compile_error" && result.compileError && (

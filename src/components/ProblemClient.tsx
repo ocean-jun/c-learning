@@ -51,6 +51,8 @@ export default function ProblemClient({
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [judging, setJudging] = useState(false);
   const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
+  /** 左侧题目栏展开状态 */
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   /** 保存代码: 返回是否成功, 供编辑器显示提示 */
   const handleSave = useCallback(
@@ -120,7 +122,45 @@ export default function ProblemClient({
 
   return (
     <div className="flex min-h-0 flex-1">
-      <ProblemList problems={problems} currentId={problem.id} />
+      {/* 左栏: 题目列表(宽度 240px ↔ 0 平滑过渡) */}
+      <div
+        className={`relative h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          sidebarOpen ? "w-60" : "w-0"
+        }`}
+      >
+        <div className="h-full w-60">
+          <ProblemList
+            problems={problems}
+            currentId={problem.id}
+            onCollapse={() => setSidebarOpen(false)}
+          />
+        </div>
+      </div>
+
+      {/* 折叠后: 左侧浮动展开按钮 */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          title="展开题目列表"
+          aria-label="展开题目列表"
+          className="animate-fade-in absolute left-1.5 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border bg-[#2d2d30] p-2 text-muted shadow-lg shadow-black/40 hover:text-foreground hover:shadow-black/60"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M7 4 L11 8 L7 12" />
+            <path d="M3 4 L7 8 L3 12" />
+          </svg>
+        </button>
+      )}
+
       <div className="flex min-w-0 flex-1 flex-col">
         <ProblemDescription
           problem={problem}

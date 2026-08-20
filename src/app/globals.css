@@ -28,6 +28,17 @@
     "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas,
     "Courier New", monospace;
+
+  /* ---- 动效规范 ---- */
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  /* 面板/侧边栏滑动的标准缓动 */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 入场(慢出)缓动 */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  /* 出场(快进)缓动 */
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
 body {
@@ -50,4 +61,153 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ============================================================
+ * 页面过渡动画 (View Transitions API)
+ * 旧页面快速离开(150ms), 新页面优雅进入(210ms + 400ms 滑动)
+ * 参考 Next.js 官方 View Transitions 指南的非对称时序
+ * ============================================================ */
+
+:root {
+  --vt-duration-exit: 150ms;
+  --vt-duration-enter: 210ms;
+  --vt-duration-move: 400ms;
+}
+
+@keyframes vt-fade {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+@keyframes vt-slide-y {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes vt-slide-x {
+  from {
+    transform: translateX(24px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes vt-slide-x-rev {
+  from {
+    transform: translateX(-24px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* 默认: 上滑进入 / 下滑离开 */
+::view-transition-old(.slide-up) {
+  animation:
+    var(--vt-duration-exit) var(--ease-exit) both vt-fade reverse,
+    var(--vt-duration-exit) var(--ease-exit) both vt-slide-y reverse;
+}
+::view-transition-new(.slide-up) {
+  animation:
+    var(--vt-duration-enter) ease-in var(--vt-duration-exit) both vt-fade,
+    var(--vt-duration-move) var(--ease-enter) both vt-slide-y;
+}
+
+/* 前进: 从右侧滑入 */
+::view-transition-old(.nav-forward) {
+  animation:
+    var(--vt-duration-exit) var(--ease-exit) both vt-fade reverse,
+    var(--vt-duration-exit) var(--ease-exit) both vt-slide-x reverse;
+}
+::view-transition-new(.nav-forward) {
+  animation:
+    var(--vt-duration-enter) ease-in var(--vt-duration-exit) both vt-fade,
+    var(--vt-duration-move) var(--ease-enter) both vt-slide-x;
+}
+
+/* 后退: 从左侧滑入 */
+::view-transition-old(.nav-back) {
+  animation:
+    var(--vt-duration-exit) var(--ease-exit) both vt-fade reverse,
+    var(--vt-duration-exit) var(--ease-exit) both vt-slide-x-rev reverse;
+}
+::view-transition-new(.nav-back) {
+  animation:
+    var(--vt-duration-enter) ease-in var(--vt-duration-exit) both vt-fade,
+    var(--vt-duration-move) var(--ease-enter) both vt-slide-x-rev;
+}
+
+/* ============================================================
+ * 页面首次加载/刷新的入场动画
+ * ============================================================ */
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-in var(--duration-slow) var(--ease-enter) both;
+}
+
+/* ============================================================
+ * 局部元素动画
+ * ============================================================ */
+
+/* 新提交记录/判题结果出现 */
+@keyframes item-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-item-in {
+  animation: item-in 300ms var(--ease-enter) both;
+}
+
+/* 左栏折叠展开按钮的淡入 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in var(--duration-base) ease-out both;
+}
+
+/* 通用可点击元素反馈: 按下微缩 + 颜色过渡 */
+button,
+a {
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
+}
+button:active:not(:disabled),
+a:active {
+  transform: scale(0.97);
 }
