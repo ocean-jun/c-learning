@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { JudgeResult, JudgeStatus } from "./types";
+import type { JudgeResult, RunResult } from "./types";
 
 const execFileAsync = promisify(execFile);
 
@@ -91,15 +91,13 @@ function normalize(s: string): string {
 }
 
 /**
- * 判题入口: 编译并运行代码, 用样例输入验证输出
+ * 编译并运行代码(自定义输入), 不比对输出
+ * 编译并运行代码(自定义输入), 不比对输出
+ * 供「运行」调试功能使用, 判题(judgeC)复用此流程
  */
-export async function judgeC(
-  code: string,
-  sampleInput: string,
-  sampleOutput: string,
-): Promise<JudgeResult> {
+export async function compileAndRun(code: string, input: string): Promise<RunResult> {
   const compiler = findCompiler();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clab-judge-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clab-run-"));
   try {
     const srcPath = path.join(dir, "main.c");
     const exePath = path.join(dir, "main.exe");
@@ -108,25 +106,41 @@ export async function judgeC(
     // 1. 编译
     const c = await compile(compiler, srcPath, exePath);
     if (!c.ok) {
-      return { status: "compile_error", compileError: c.error };
+      return { ok: false, compileError: c.error };
     }
 
-    // 2. 运行
-    const r = await run(exePath, sampleInput ?? "");
+    // 2. 运行(喂入自定义输入)
+    const r = await run(exePath, input ?? "");
     if (!r.ok) {
-      if (r.timedOut) return { status: "timeout" };
-      return { status: "runtime_error", output: r.error };
+      return { ok: false, error: r.error, timedOut: r.timedOut };
     }
-
-    // 3. 比对
-    const actual = normalize(r.output ?? "");
-    const expected = normalize(sampleOutput ?? "");
-    return {
-      status: actual === expected ? "accepted" : "wrong_answer",
-      output: r.output,
-      expectedOutput: sampleOutput,
-    };
+    return { ok: true, output: r.output };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * 判题入口: 编译并运行代码, 用样例输入验证输出
+ */
+export async function judgeC(
+  code: string,
+  sampleInput: string,
+  sampleOutput: string,
+): Promise<JudgeResult> {
+  const r = await compileAndRun(code, sampleInput);
+  if (!r.ok) {
+    if (r.compileError) return { status: "compile_error", compileError: r.compileError };
+    if (r.timedOut) return { status: "timeout" };
+    return { status: "runtime_error", output: r.error };
+  }
+
+  // 比对
+  const actual = normalize(r.output ?? "");
+  const expected = normalize(sampleOutput ?? "");
+  return {
+    status: actual === expected ? "accepted" : "wrong_answer",
+    output: r.output,
+    expectedOutput: sampleOutput,
+  };
 }

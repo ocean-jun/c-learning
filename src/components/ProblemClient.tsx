@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { JudgeResult, ProblemWithStatus, Submission } from "@/lib/types";
+import type { JudgeResult, ProblemWithStatus, RunResult, Submission } from "@/lib/types";
 import ProblemList from "./ProblemList";
 import ProblemDescription from "./ProblemDescription";
 import SubmissionList from "./SubmissionList";
 import JudgeResultPanel from "./JudgeResultPanel";
+import RunPanel from "./RunPanel";
 
 // Monaco 依赖浏览器 API(window), 只能在客户端加载, SSR 时渲染占位
 const CodeEditor = dynamic(() => import("./CodeEditor"), {
@@ -53,6 +54,15 @@ export default function ProblemClient({
   const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
   /** 左侧题目栏展开状态 */
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  /** 自定义输入运行面板 */
+  const [runPanelOpen, setRunPanelOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  /** 运行面板使用的当前编辑器代码 */
+  const runCodeRef = useRef("");
+  /** 参考答案 */
+  const [answerOpen, setAnswerOpen] = useState(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [answerLoading, setAnswerLoading] = useState(false);
 
   /** 保存代码: 返回是否成功, 供编辑器显示提示 */
   const handleSave = useCallback(
@@ -120,6 +130,53 @@ export default function ProblemClient({
     }
   }, [problem]);
 
+  /** 自定义输入运行: 编译运行但不比对、不写记录 */
+  const handleRun = useCallback(
+    async (input: string) => {
+      setRunning(true);
+      try {
+        const res = await fetch(`/api/problems/${problem.id}/run`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: runCodeRef.current, input }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.result as RunResult | null;
+      } catch {
+        return null;
+      } finally {
+        setRunning(false);
+      }
+    },
+    [problem.id],
+  );
+
+  /** 切换参考答案显示(首次展开时加载) */
+  const handleToggleAnswer = useCallback(async () => {
+    if (answerOpen) {
+      setAnswerOpen(false);
+      return;
+    }
+    setAnswerOpen(true);
+    if (answer === null) {
+      setAnswerLoading(true);
+      try {
+        const res = await fetch(`/api/problems/${problem.id}/answer`);
+        if (res.ok) {
+          const data = await res.json();
+          setAnswer(data.answer || "");
+        } else {
+          setAnswer("");
+        }
+      } catch {
+        setAnswer("");
+      } finally {
+        setAnswerLoading(false);
+      }
+    }
+  }, [answerOpen, answer, problem.id]);
+
   return (
     <div className="flex min-h-0 flex-1">
       {/* 左栏: 题目列表(宽度 240px ↔ 0 平滑过渡) */}
@@ -164,17 +221,27 @@ export default function ProblemClient({
       <div className="flex min-w-0 flex-1 flex-col">
         <ProblemDescription
           problem={problem}
+          answer={answerOpen ? answer : undefined}
+          answerLoading={answerLoading}
           actions={
-            <button
-              onClick={handleToggleDone}
-              className={`rounded border px-3 py-1 text-xs font-medium transition-colors ${
-                problem.status === "done"
-                  ? "border-yellow-800 text-yellow-400 hover:bg-yellow-900/30"
-                  : "border-green-800 text-green-400 hover:bg-green-900/30"
-              }`}
-            >
-              {problem.status === "done" ? "标记为进行中" : "标记已完成"}
-            </button>
+            <>
+              <button
+                onClick={handleToggleAnswer}
+                className="rounded border border-warning/50 px-3 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/10"
+              >
+                {answerOpen ? "收起答案" : "查看答案"}
+              </button>
+              <button
+                onClick={handleToggleDone}
+                className={`rounded border px-3 py-1 text-xs font-medium transition-colors ${
+                  problem.status === "done"
+                    ? "border-yellow-800 text-yellow-400 hover:bg-yellow-900/30"
+                    : "border-green-800 text-green-400 hover:bg-green-900/30"
+                }`}
+              >
+                {problem.status === "done" ? "标记为进行中" : "标记已完成"}
+              </button>
+            </>
           }
         />
         <CodeEditor
@@ -183,7 +250,19 @@ export default function ProblemClient({
           onSave={handleSave}
           onJudge={handleJudge}
           judging={judging}
+          onOpenRun={(code) => {
+            runCodeRef.current = code;
+            setRunPanelOpen(true);
+          }}
         />
+        {runPanelOpen && (
+          <RunPanel
+            sampleInput={problem.sampleInput}
+            running={running}
+            onRun={handleRun}
+            onClose={() => setRunPanelOpen(false)}
+          />
+        )}
         <JudgeResultPanel result={judgeResult} judging={judging} />
       </div>
       <SubmissionList submissions={submissions} />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ProblemWithStatus } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
 
@@ -5,10 +6,32 @@ interface Props {
   problem: ProblemWithStatus;
   /** 头部操作区(如"标记已完成"按钮) */
   actions?: React.ReactNode;
+  /** 参考答案代码(非空时展示答案区块) */
+  answer?: string | null;
+  /** 是否正在加载答案 */
+  answerLoading?: boolean;
 }
 
 /** 题目描述区 */
-export default function ProblemDescription({ problem, actions }: Props) {
+export default function ProblemDescription({
+  problem,
+  actions,
+  answer,
+  answerLoading,
+}: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!answer) return;
+    try {
+      await navigator.clipboard.writeText(answer);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* 剪贴板不可用时忽略 */
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-5">
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -67,6 +90,36 @@ export default function ProblemDescription({ problem, actions }: Props) {
               <pre className="overflow-x-auto rounded-md border border-border bg-[#1a1a1a] p-3 font-mono text-xs leading-5">
                 {problem.sampleOutput}
               </pre>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 参考答案 */}
+      {answer !== undefined && answer !== null && (
+        <section className="animate-item-in mt-5 max-w-2xl">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-warning">参考答案</h2>
+            {answer && (
+              <button
+                onClick={handleCopy}
+                className="rounded border border-border px-2 py-0.5 text-xs text-muted hover:bg-white/5 hover:text-foreground"
+              >
+                {copied ? "已复制 ✓" : "复制"}
+              </button>
+            )}
+          </div>
+          {answerLoading ? (
+            <div className="rounded-md border border-border bg-[#1a1a1a] p-3 text-xs text-muted">
+              加载中…
+            </div>
+          ) : answer ? (
+            <pre className="overflow-x-auto rounded-md border border-border bg-[#1a1a1a] p-3 font-mono text-xs leading-5">
+              {answer}
+            </pre>
+          ) : (
+            <div className="rounded-md border border-border bg-[#1a1a1a] p-3 text-xs text-muted">
+              本题暂无参考答案
             </div>
           )}
         </section>

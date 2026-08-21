@@ -25,6 +25,8 @@ interface Props {
   onJudge?: (code: string) => Promise<boolean> | boolean | void;
   /** 是否正在判题(用于按钮禁用态) */
   judging?: boolean;
+  /** 打开自定义输入运行面板(携带当前编辑器代码) */
+  onOpenRun?: (code: string) => void;
 }
 
 type Tip = { kind: "ok" | "err" | "info"; text: string } | null;
@@ -47,6 +49,7 @@ export default function CodeEditor({
   onSave,
   onJudge,
   judging = false,
+  onOpenRun,
 }: Props) {
   const [code, setCode] = useState(initialCode);
   const [tip, setTip] = useState<Tip>(null);
@@ -147,6 +150,14 @@ export default function CodeEditor({
           >
             保存代码
           </button>
+          {onOpenRun && (
+            <button
+              onClick={() => onOpenRun(code)}
+              className="rounded border border-border px-3 py-1 text-xs font-medium text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              ▶ 运行
+            </button>
+          )}
           {onJudge && (
             <button
               onClick={handleJudge}

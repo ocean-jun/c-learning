@@ -328,6 +328,19 @@ export function getProblemByCode(code: string): ProblemWithStatus | null {
   return listProblems().find((p) => p.code.toLowerCase() === code.toLowerCase()) ?? null;
 }
 
+/** 获取题目的参考答案代码(answer 列), 没有则为空串 */
+export function getProblemAnswer(id: number): string {
+  try {
+    const pCol = resolveColumns("problems", ["answer"]);
+    const row = getDb()
+      .prepare(`SELECT ${pCol.answer ?? "answer"} AS answer FROM problems WHERE ${pCol.id ?? "id"} = ?`)
+      .get(id) as { answer?: unknown } | undefined;
+    return String(row?.answer ?? "");
+  } catch {
+    return "";
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * 查询: Dashboard 统计
  * ------------------------------------------------------------------------- */

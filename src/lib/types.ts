@@ -57,6 +57,18 @@ export interface JudgeResult {
   expectedOutput?: string;
 }
 
+/** 自定义输入运行结果(调试用, 不比对) */
+export interface RunResult {
+  ok: boolean;
+  /** 程序 stdout 输出 */
+  output?: string;
+  /** 编译错误信息 */
+  compileError?: string;
+  /** 运行错误/超时信息 */
+  error?: string;
+  timedOut?: boolean;
+}
+
 /** 章节统计(章节导航用) */
 export interface ChapterStat {
   chapter: number;
