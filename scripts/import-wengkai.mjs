@@ -36,11 +36,14 @@ const db = new DatabaseSync(dbPath);
 db.exec("PRAGMA journal_mode = WAL");
 if (fs.existsSync(schemaPath)) db.exec(fs.readFileSync(schemaPath, "utf8"));
 
-// 兼容旧库: 补充 answer 列(新库已在 schema.sql 中)
+// 兼容旧库: 补充 answer / checker 列(新库已在 schema.sql 中)
 try {
   const cols = db.prepare("PRAGMA table_info(problems)").all().map((c) => c.name);
   if (!cols.includes("answer")) {
     db.exec("ALTER TABLE problems ADD COLUMN answer TEXT NOT NULL DEFAULT ''");
+  }
+  if (!cols.includes("checker")) {
+    db.exec("ALTER TABLE problems ADD COLUMN checker TEXT NOT NULL DEFAULT ''");
   }
 } catch {
   /* 忽略 */
@@ -49,8 +52,8 @@ try {
 const before = db.prepare("SELECT COUNT(*) AS c FROM problems").get().c;
 
 const upsert = db.prepare(`
-  INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer)
-  VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer)
+  INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer, checker)
+  VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer, @checker)
   ON CONFLICT(code) DO UPDATE SET
     title        = excluded.title,
     chapter      = excluded.chapter,
@@ -59,7 +62,8 @@ const upsert = db.prepare(`
     output       = excluded.output,
     sampleInput  = excluded.sampleInput,
     sampleOutput = excluded.sampleOutput,
-    answer       = excluded.answer
+    answer       = excluded.answer,
+    checker      = excluded.checker
 `);
 const rows = problems.map((it) => ({
   code: String(it.code ?? ""),
@@ -71,6 +75,7 @@ const rows = problems.map((it) => ({
   sampleInput: String(it.sampleInput ?? ""),
   sampleOutput: String(it.sampleOutput ?? ""),
   answer: String(it.answer ?? ""),
+  checker: String(it.checker ?? ""),
 }));
 
 db.exec("BEGIN");

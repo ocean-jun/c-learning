@@ -10,6 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { JudgeResult, RunResult } from "./types";
+import { runSpecialCheck } from "./checkers";
 
 const execFileAsync = promisify(execFile);
 
@@ -122,11 +123,13 @@ export async function compileAndRun(code: string, input: string): Promise<RunRes
 
 /**
  * 判题入口: 编译并运行代码, 用样例输入验证输出
+ * checker 非空时使用特殊判题器(针对答案不唯一的构造题)
  */
 export async function judgeC(
   code: string,
   sampleInput: string,
   sampleOutput: string,
+  checker?: string,
 ): Promise<JudgeResult> {
   const r = await compileAndRun(code, sampleInput);
   if (!r.ok) {
@@ -135,7 +138,18 @@ export async function judgeC(
     return { status: "runtime_error", output: r.error };
   }
 
-  // 比对
+  // 特殊判题: 校验输出合法性, 不与样例逐字比对
+  const special = checker ? runSpecialCheck(checker, sampleInput, r.output ?? "", sampleOutput ?? "") : null;
+  if (special) {
+    return {
+      status: special.ok ? "accepted" : "wrong_answer",
+      output: r.output,
+      expectedOutput: sampleOutput,
+      message: special.message,
+    };
+  }
+
+  // 常规比对
   const actual = normalize(r.output ?? "");
   const expected = normalize(sampleOutput ?? "");
   return {

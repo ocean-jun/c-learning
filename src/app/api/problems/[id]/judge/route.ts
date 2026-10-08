@@ -33,7 +33,7 @@ export async function POST(
   const { submission, problem: savedProblem } = saveSubmission(problemId, code);
 
   // 2. 判题
-  const result = await judgeC(code, problem.sampleInput, problem.sampleOutput);
+  const result = await judgeC(code, problem.sampleInput, problem.sampleOutput, problem.checker);
 
   // 3. 记录判题状态到本次提交
   updateSubmissionStatus(submission.id, result.status);

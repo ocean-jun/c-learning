@@ -32,11 +32,14 @@ const schemaPath = path.join(root, "database", "schema.sql");
 if (fs.existsSync(schemaPath)) {
   db.exec(fs.readFileSync(schemaPath, "utf8"));
 }
-// 兼容旧库: 补充 answer 列
+// 兼容旧库: 补充 answer / checker 列
 try {
   const cols = db.prepare("PRAGMA table_info(problems)").all().map((c) => c.name);
   if (!cols.includes("answer")) {
     db.exec("ALTER TABLE problems ADD COLUMN answer TEXT NOT NULL DEFAULT ''");
+  }
+  if (!cols.includes("checker")) {
+    db.exec("ALTER TABLE problems ADD COLUMN checker TEXT NOT NULL DEFAULT ''");
   }
 } catch {
   /* 忽略 */
@@ -60,8 +63,8 @@ if (!Array.isArray(items) || items.length === 0) {
 }
 
 const insert = db.prepare(
-  `INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer)
-   VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer)`,
+  `INSERT INTO problems (code, title, chapter, description, input, output, sampleInput, sampleOutput, answer, checker)
+   VALUES (@code, @title, @chapter, @description, @input, @output, @sampleInput, @sampleOutput, @answer, @checker)`,
 );
 db.exec("BEGIN");
 try {
@@ -76,6 +79,7 @@ try {
       sampleInput: item.sampleInput ?? "",
       sampleOutput: item.sampleOutput ?? "",
       answer: item.answer ?? "",
+      checker: item.checker ?? "",
     });
   }
   db.exec("COMMIT");

@@ -34,6 +34,10 @@ export default function JudgeResultPanel({ result, judging }: Props) {
     <div className="animate-item-in shrink-0 border-t border-border bg-[#252526] px-4 py-3">
       <p className={`mb-2 text-sm font-semibold ${view.cls}`}>{view.label}</p>
 
+      {result.message && (
+        <p className="mb-2 text-xs text-muted">{result.message}</p>
+      )}
+
       {result.status === "compile_error" && result.compileError && (
         <pre className="max-h-40 overflow-auto rounded-md border border-border bg-[#1a1a1a] p-3 font-mono text-xs leading-5 text-danger">
           {result.compileError}

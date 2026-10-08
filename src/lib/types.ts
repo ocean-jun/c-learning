@@ -18,6 +18,8 @@ export interface Problem {
   output: string;
   sampleInput: string;
   sampleOutput: string;
+  /** 特殊判题器名称(答案不唯一的题目, 如 'xor-array'); 为空则按样例精确比对 */
+  checker?: string;
 }
 
 /** 题目 + 学习状态(列表用) */
@@ -55,6 +57,8 @@ export interface JudgeResult {
   output?: string;
   /** 期望输出(样例输出) */
   expectedOutput?: string;
+  /** 特殊判题说明(如"特殊判题通过: 构造合法") */
+  message?: string;
 }
 
 /** 自定义输入运行结果(调试用, 不比对) */

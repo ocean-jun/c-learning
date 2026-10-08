@@ -47,6 +47,7 @@ const TABLE_DDL = [
     sampleInput   TEXT    NOT NULL DEFAULT '',
     sampleOutput  TEXT    NOT NULL DEFAULT '',
     answer        TEXT    NOT NULL DEFAULT '',
+    checker       TEXT    NOT NULL DEFAULT '',
     createdAt     TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
   )`,
   `CREATE TABLE IF NOT EXISTS submissions (
@@ -81,16 +82,19 @@ export function getDb(): DatabaseSync {
 }
 
 /**
- * 兼容旧库: problems 表缺少 answer(参考答案)列时补齐。
- * 新库在 TABLE_DDL 中已包含该列。
+ * 兼容旧库: problems 表缺少 answer(参考答案) / checker(特殊判题) 列时补齐。
+ * 新库在 TABLE_DDL 中已包含这些列。
  */
 function ensureAnswerColumn(d: DatabaseSync): void {
   try {
-    const cols = resolveColumns("problems", ["answer"], d);
+    const cols = resolveColumns("problems", ["answer", "checker"], d);
     if (!cols.answer) {
       d.exec(`ALTER TABLE problems ADD COLUMN answer TEXT NOT NULL DEFAULT ''`);
-      columnCache.clear();
     }
+    if (!cols.checker) {
+      d.exec(`ALTER TABLE problems ADD COLUMN checker TEXT NOT NULL DEFAULT ''`);
+    }
+    if (!cols.answer || !cols.checker) columnCache.clear();
   } catch {
     // 用户提供的题库表可能不允许修改, 忽略
   }
@@ -127,6 +131,7 @@ function ensureInitialData(d: DatabaseSync): void {
         sampleOutput: String(item.sampleOutput ?? ""),
       };
       if (pCol.answer) row.answer = String(item.answer ?? "");
+      if (pCol.checker) row.checker = String(item.checker ?? "");
       values.push(row);
     }
     for (const logical of Object.keys(values[0])) {
@@ -181,6 +186,7 @@ const CANDIDATES: Record<string, string[]> = {
   sampleInput: ["sampleInput", "sample_input", "sampleinput"],
   sampleOutput: ["sampleOutput", "sample_output", "sampleoutput"],
   answer: ["answer"],
+  checker: ["checker"],
   problemId: ["problemId", "problem_id", "problemid"],
   submitTime: ["submitTime", "submit_time", "submittime"],
   submitCount: ["submitCount", "submit_count", "submitcount"],
@@ -242,6 +248,7 @@ function toProblem(row: Row, pCol: Record<string, string>): Problem {
     output: String(get("output") ?? ""),
     sampleInput: String(get("sampleInput") ?? ""),
     sampleOutput: String(get("sampleOutput") ?? ""),
+    checker: String(get("checker") ?? ""),
   };
 }
 
@@ -263,6 +270,7 @@ const PROBLEM_LOGICAL = [
   "output",
   "sampleInput",
   "sampleOutput",
+  "checker",
 ];
 
 const PROGRESS_LOGICAL = ["problemId", "status", "submitCount", "lastSubmitTime"];

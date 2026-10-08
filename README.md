@@ -17,17 +17,27 @@ Windows 也可以直接双击 `start.bat`（自动启动并打开浏览器）。
 
 ## 题库数据
 
-**仓库自带题库**：`database/wengkai-problems.json`（38 道翁恺课程经典题目，含样例与参考答案）。
+**仓库自带题库**：`database/wengkai-problems.json`
+- **第 1–11 章**：38 道翁恺课程经典题目（含样例与参考答案）
+- **第 12 章**：15 道算法练习题（A–O：最大公约数、地铁传送最短路、单调不降序列、静态区间第 k 小、环形石子合并、修复道路、逆序对、食物链、Money Buys Happiness、多边形游戏、树上最小 f 值、矿区材料、多重集第 k 小、XOR Array、MAX-MEX Cut），同样含样例与参考答案
+
 首次启动时若题库为空，系统**自动导入**该文件，无需任何操作；之后题目保存在本地 `database/wengkai.db`（含个人刷题进度，不入库）。
+
+**已有本地题库时如何补上新题**（不覆盖已有题目与进度）：
+
+```bash
+node scripts/import-wengkai.mjs   # 按 code UPSERT: 新题插入, 已有题更新题目字段, 提交记录与进度不受影响
+```
 
 也可以替换为自己的题库：
 
 - **方式一（推荐）**：把你的 SQLite 题库文件放入 `database/wengkai.db`（表结构见 `database/schema.sql`，读取层自动兼容 camelCase / snake_case 字段命名，缺失的表自动补齐）
-- **方式二**：提供 `database/wengkai-problems.json`（字段：`code / title / chapter / description / input / output / sampleInput / sampleOutput / answer`），启动时自动导入，或手动执行：
+- **方式二**：提供 `database/wengkai-problems.json`（字段：`code / title / chapter / description / input / output / sampleInput / sampleOutput / answer`，可选 `checker` 指定特殊判题器），启动时自动导入，或手动执行：
 
 ```bash
 node scripts/import-json.mjs           # 题库为空时导入(幂等)
 node scripts/import-json.mjs --force   # 清空现有题目后重新导入(会删除该题库的提交记录与进度)
+node scripts/import-wengkai.mjs        # 增量 UPSERT(保留已有题目与进度, 推荐用于补题)
 ```
 
 没有题库文件时应用也能启动（自动创建空库）。开发调试可使用示例种子数据：

@@ -454,5 +454,187 @@
     "sampleInput": "3\nChris 1984/03/10 F +86181779452 13707010007\nLaoLao 1967/11/30 F 057187951100 +8618618623333\nQiaoLin 1980/01/01 M 84172333 10086\n2 1 7",
     "sampleOutput": "LaoLao 057187951100 +8618618623333 F 1967/11/30\nNot Found",
     "answer": "#include <stdio.h>\n#define N 10\nstruct Person {\nchar name[11];\nchar birthday[11];\nchar sex;\nchar fixed[17];\nchar mobile[17];\n};\nint main(void)\n{\nstruct Person p[N];\nint num[N];\nint i, n, k;\nscanf(\"%d\", &n);\nfor(i = 0; i < n; ++i)\nscanf(\"%s %s %c %s %s\", p[i].name, p[i].birthday,\n&p[i].sex, p[i].fixed, p[i].mobile);\nscanf(\"%d\", &k);\nfor(i = 0; i < k; ++i)\nscanf(\"%d\", &num[i]);\nfor(i = 0; i < k; ++i) {\nif(num[i] >= 0 && num[i] < n)\nprintf(\"%s %s %s %c %s\\n\", p[num[i]].name,\np[num[i]].fixed, p[num[i]].mobile, p[num[i]].sex, p[num[i]].birthday);\nelse\nprintf(\"Not Found\\n\");\n}\nreturn 0;\n}"
+  },
+
+  {
+    "code": "12-A",
+    "title": "最大公约数",
+    "chapter": 12,
+    "description": "给定两个整数 a, b，求出它们的最大公约数。\n\n【背景】经过一个国庆的努力学习，yx 终于可以解决一些算法题了，于是他打开了他最爱的 oj，开始写题，可是发现第一道题就出乎了他的意料：多测！",
+    "input": "每个测试点包含多组测试数据。\n第一行给出测试用例数 T (1 ≤ T ≤ 10^4)。\n接下来每组测试数据包含两个整数 a, b (1 ≤ a, b ≤ 10^18)。",
+    "output": "对于每个测试用例，输出一行，表示 a, b 的最大公约数。",
+    "sampleInput": "6\n1 1\n4 5\n1 4\n191 9\n8 10\n16 24",
+    "sampleOutput": "1\n1\n1\n1\n2\n8\n",
+    "answer": "#include <stdio.h>\n\n/* A - 最大公约数: 欧几里得算法, a,b 可达 1e18, 用 long long */\nstatic long long gcd_ll(long long a, long long b) {\n    while (b) {\n        long long t = a % b;\n        a = b;\n        b = t;\n    }\n    return a;\n}\n\nint main(void) {\n    int T;\n    if (scanf(\"%d\", &T) != 1) return 0;\n    while (T--) {\n        long long a, b;\n        scanf(\"%lld %lld\", &a, &b);\n        printf(\"%lld\\n\", gcd_ll(a, b));\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-B",
+    "title": "地铁传送最短路",
+    "chapter": 12,
+    "description": "给定一张有 n 个地铁站、m 条边的地铁线路图，并且给定 k 个可传送的地铁站。yx 可以从宿舍直接传送到这 k 个地铁站中的任意一个，请你帮忙求出 yx 从宿舍出发到达这 z 个目标地铁站 b_i 的最少时间分别是多少。\n\n（本质：以 k 个站点为源点的多源最短路，边权非负，注意可能存在 0 边权。）",
+    "input": "每个测试点包含多组测试数据。\n第一行给出测试用例数 T (1 ≤ T ≤ 2×10^5)。\n接下来每组测试数据：\n第一行给定 n, m, k, z，分别表示图中有 n 个地铁站、m 条边、k 个可传送的节点和 z 个目标地铁站；\n第二行输入 k 个数 a_i，代表可以传送到的地铁站；\n第三行输入 z 个数 b_i，代表目标地铁站；\n接下来 m 行，每行三个整数 u_i, v_i, w_i (1 ≤ u_i, v_i ≤ n; 0 ≤ w_i ≤ 10^9)，代表这条线路连接的两个顶点（双向）和经过这条线路所需要的时间。\n保证所有测试点 Σn ≤ 10^5, Σm ≤ 10^5。",
+    "output": "对于每个测试用例，输出一行 z 个数，第 i 个数代表到达地铁站 b_i 所需要花费的最短时间，若无法到达则输出 -1。",
+    "sampleInput": "1\n6 8 2 4\n1 2\n3 4 5 6\n1 6 10\n6 3 2\n1 3 13\n3 4 5\n3 5 1\n4 5 10\n5 1 10\n2 5 8",
+    "sampleOutput": "9 14 8 10\n",
+    "answer": "#include <stdio.h>\n#include <string.h>\n\n/*\n * B - 地铁传送最短路\n * k 个可传送站点作为多源起点(距离 0), 求到各目标站点的最短路。\n * 二叉堆 Dijkstra, 支持 0 边权。\n */\n#define MAXN 100005\n#define MAXE 400005\n\nstatic int head[MAXN], nxt[MAXE], to[MAXE], ecnt;\nstatic long long wt[MAXE];\nstatic long long dist[MAXN];\nstatic int done[MAXN];\n\nstatic int hnode[MAXE];\nstatic long long hdist[MAXE];\nstatic int hsz;\n\nstatic void hpush(int node, long long d) {\n    int i = ++hsz;\n    hnode[i] = node;\n    hdist[i] = d;\n    while (i > 1) {\n        int p = i >> 1;\n        if (hdist[p] <= hdist[i]) break;\n        long long td = hdist[p]; hdist[p] = hdist[i]; hdist[i] = td;\n        int tn = hnode[p]; hnode[p] = hnode[i]; hnode[i] = tn;\n        i = p;\n    }\n}\n\nstatic void hpop(int *node, long long *d) {\n    *node = hnode[1];\n    *d = hdist[1];\n    hnode[1] = hnode[hsz];\n    hdist[1] = hdist[hsz];\n    hsz--;\n    int i = 1;\n    for (;;) {\n        int l = i << 1, r = l | 1, s = i;\n        if (l <= hsz && hdist[l] < hdist[s]) s = l;\n        if (r <= hsz && hdist[r] < hdist[s]) s = r;\n        if (s == i) break;\n        long long td = hdist[s]; hdist[s] = hdist[i]; hdist[i] = td;\n        int tn = hnode[s]; hnode[s] = hnode[i]; hnode[i] = tn;\n        i = s;\n    }\n}\n\nstatic void add_edge(int u, int v, long long w) {\n    to[ecnt] = v; wt[ecnt] = w; nxt[ecnt] = head[u]; head[u] = ecnt++;\n}\n\nstatic int src[MAXN], tgt[MAXN];\n\nint main(void) {\n    int T;\n    if (scanf(\"%d\", &T) != 1) return 0;\n    while (T--) {\n        int n, m, k, z;\n        scanf(\"%d %d %d %d\", &n, &m, &k, &z);\n        ecnt = 0;\n        hsz = 0;\n        for (int i = 1; i <= n; i++) {\n            head[i] = -1;\n            dist[i] = -1;\n            done[i] = 0;\n        }\n        for (int i = 0; i < k; i++) scanf(\"%d\", &src[i]);\n        for (int i = 0; i < z; i++) scanf(\"%d\", &tgt[i]);\n        for (int i = 0; i < m; i++) {\n            int u, v;\n            long long w;\n            scanf(\"%d %d %lld\", &u, &v, &w);\n            add_edge(u, v, w);\n            add_edge(v, u, w);\n        }\n\n        for (int i = 0; i < k; i++) {\n            if (src[i] >= 1 && src[i] <= n && dist[src[i]] != 0) {\n                dist[src[i]] = 0;\n                hpush(src[i], 0);\n            }\n        }\n        while (hsz > 0) {\n            int u;\n            long long d;\n            hpop(&u, &d);\n            if (done[u] || d > dist[u]) continue;\n            done[u] = 1;\n            for (int e = head[u]; e != -1; e = nxt[e]) {\n                int v = to[e];\n                long long nd = d + wt[e];\n                if (dist[v] < 0 || nd < dist[v]) {\n                    dist[v] = nd;\n                    hpush(v, nd);\n                }\n            }\n        }\n\n        for (int i = 0; i < z; i++) {\n            if (i) printf(\" \");\n            printf(\"%lld\", dist[tgt[i]]);\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-C",
+    "title": "单调不降序列",
+    "chapter": 12,
+    "description": "给定一个长度为 n 的序列，序列中第 i 个值为 a_i。每次操作，yls 最多可以选择任意 k 个不同的位置，把选中的数都减 1。请问 yls 最少需要多少次操作，才能把这个序列变成一个单调不降的序列。\n\n单调不降：设长度为 m 的序列第 i 个元素为 b_i，若对每个 i (1 ≤ i < m) 都有 b_i ≤ b_{i+1}，则称该序列单调不降。\n\n提示：先求每个位置至少需要减多少次（贪心从右往左取上界），再结合每次最多减 k 个位置，答案是 max(单点最大减少量, ceil(总减少量 / k))。",
+    "input": "每个测试点包含多组测试数据。第一行给出测试用例数 T。\n对于每个测试点：\n第一行给定 n, k (1 ≤ n, k ≤ 10^5 且保证 k ≤ n)，表示序列的长度和每次操作最多能选择的位置数；\n第二行输入 n 个数 a_i (1 ≤ a_i ≤ 10^9)；\n保证所有测试点 Σn ≤ 10^5。",
+    "output": "对于每个测试用例，输出一行，表示最小操作次数。",
+    "sampleInput": "2\n5 1\n1 1 4 5 5\n6 6\n1 1 4 5 1 4",
+    "sampleOutput": "0\n4\n",
+    "answer": "#include <stdio.h>\n\n/*\n * C - 单调不降序列\n * 每次操作最多把 k 个位置减 1。\n * 先求\"元素级不降的最大目标序列\" b: b[n-1]=a[n-1], b[i]=min(a[i], b[i+1])\n * 每个位置需要减 c[i]=a[i]-b[i] 次。\n * 需要的操作数 = max( max(c[i]), ceil(sum(c[i]) / k) )\n */\nint main(void) {\n    int T;\n    if (scanf(\"%d\", &T) != 1) return 0;\n    static long long a[200005], b[200005];\n    while (T--) {\n        int n;\n        long long k;\n        scanf(\"%d %lld\", &n, &k);\n        for (int i = 0; i < n; i++) scanf(\"%lld\", &a[i]);\n\n        b[n - 1] = a[n - 1];\n        for (int i = n - 2; i >= 0; i--) b[i] = a[i] < b[i + 1] ? a[i] : b[i + 1];\n\n        long long mx = 0, sum = 0;\n        for (int i = 0; i < n; i++) {\n            long long c = a[i] - b[i];\n            if (c > mx) mx = c;\n            sum += c;\n        }\n        long long need = (sum + k - 1) / k;\n        if (need > mx) mx = need;\n        printf(\"%lld\\n\", mx);\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-D",
+    "title": "静态区间第 k 小",
+    "chapter": 12,
+    "description": "这是非常经典的可持久化权值线段树入门题——静态区间第 k 小。\n\n如题，给定 n 个整数构成的序列 a，对于指定的闭区间 [l, r] 查询其区间内的第 k 小值。\n\n提示：对序列建立 n 个版本的前缀权值线段树，查询时用 root[r] - root[l-1] 在树上二分下降。",
+    "input": "第一行包含两个整数，分别表示序列的长度 n 和查询的个数 m (1 ≤ n, m ≤ 2×10^5)。\n第二行包含 n 个整数，第 i 个整数表示序列的第 i 个元素 a_i (1 ≤ a_i ≤ 10^9)。\n接下来 m 行每行包含三个整数 l, r, k，表示查询区间 [l, r] 内的第 k 小值。",
+    "output": "对于每次询问，输出一行一个整数表示答案。",
+    "sampleInput": "5 5\n25957 6405 15770 26287 26465\n2 2 1\n3 4 1\n4 5 1\n1 2 2\n4 4 1",
+    "sampleOutput": "6405\n15770\n26287\n25957\n26287\n",
+    "answer": "#include <stdio.h>\n#include <stdlib.h>\n\n/*\n * D - 静态区间第 k 小 (可持久化权值线段树)\n * 对序列建立 n 个版本的前缀权值线段树, 查询 [l, r] 时用 root[r] - root[l-1] 二分下降。\n */\n#define MAXN 200005\n#define MAXNODE 4200000\n\nstatic int lc[MAXNODE], rc[MAXNODE], sumv[MAXNODE];\nstatic int root[MAXN];\nstatic int node_cnt;\n\nstatic int a[MAXN], vals[MAXN];\n\nstatic int cmp_int(const void *x, const void *y) {\n    int p = *(const int *)x, q = *(const int *)y;\n    return (p > q) - (p < q);\n}\n\nstatic int build(int l, int r) {\n    int id = ++node_cnt;\n    lc[id] = rc[id] = sumv[id] = 0;\n    if (l < r) {\n        int mid = (l + r) >> 1;\n        lc[id] = build(l, mid);\n        rc[id] = build(mid + 1, r);\n    }\n    return id;\n}\n\nstatic int update(int prev, int l, int r, int pos) {\n    int id = ++node_cnt;\n    lc[id] = lc[prev];\n    rc[id] = rc[prev];\n    sumv[id] = sumv[prev] + 1;\n    if (l < r) {\n        int mid = (l + r) >> 1;\n        if (pos <= mid) lc[id] = update(lc[prev], l, mid, pos);\n        else rc[id] = update(rc[prev], mid + 1, r, pos);\n    }\n    return id;\n}\n\nstatic int query(int u, int v, int l, int r, int k) {\n    if (l == r) return l;\n    int mid = (l + r) >> 1;\n    int left_cnt = sumv[lc[v]] - sumv[lc[u]];\n    if (k <= left_cnt) return query(lc[u], lc[v], l, mid, k);\n    return query(rc[u], rc[v], mid + 1, r, k - left_cnt);\n}\n\nint main(void) {\n    int n, m;\n    if (scanf(\"%d %d\", &n, &m) != 2) return 0;\n    for (int i = 1; i <= n; i++) {\n        scanf(\"%d\", &a[i]);\n        vals[i] = a[i];\n    }\n\n    /* 离散化 */\n    qsort(vals + 1, n, sizeof(int), cmp_int);\n    int uniq = 0;\n    for (int i = 1; i <= n; i++)\n        if (i == 1 || vals[i] != vals[uniq]) vals[++uniq] = vals[i];\n\n    root[0] = build(1, uniq);\n    for (int i = 1; i <= n; i++) {\n        int lo = 1, hi = uniq, pos = 1;\n        while (lo <= hi) {\n            int mid = (lo + hi) >> 1;\n            if (vals[mid] == a[i]) { pos = mid; break; }\n            if (vals[mid] < a[i]) lo = mid + 1;\n            else hi = mid - 1;\n        }\n        root[i] = update(root[i - 1], 1, uniq, pos);\n    }\n\n    while (m--) {\n        int l, r, k;\n        scanf(\"%d %d %d\", &l, &r, &k);\n        printf(\"%d\\n\", vals[query(root[l - 1], root[r], 1, uniq, k)]);\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-E",
+    "title": "环形石子合并",
+    "chapter": 12,
+    "description": "在一个圆形操场的四周摆放 N 堆石子，现要将石子有次序地合并成一堆，规定每次只能选相邻的 2 堆合并成新的一堆，并将新的一堆的石子数记为该次合并的得分。\n\n试设计一个算法，计算出将 N 堆石子合并成 1 堆的最小得分和最大得分。\n\n数据范围：1 ≤ N ≤ 100，0 ≤ a_i ≤ 20。",
+    "input": "数据的第 1 行是正整数 N，表示有 N 堆石子。\n第 2 行有 N 个整数，第 i 个整数 a_i 表示第 i 堆石子的个数。",
+    "output": "输出共 2 行，第 1 行为最小得分，第 2 行为最大得分。",
+    "sampleInput": "4\n4 5 9 4",
+    "sampleOutput": "43\n54\n",
+    "answer": "#include <stdio.h>\n#include <string.h>\n\n/*\n * E - 环形石子合并\n * 断环成链(长度 2n) + 区间 DP: O(n^3)\n */\n#define MAXN 205\n#define INF 0x3f3f3f3f\n\nstatic int a[MAXN];\nstatic long long pre[MAXN];\nstatic int fmin[MAXN][MAXN], fmax[MAXN][MAXN];\n\nint main(void) {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    for (int i = 1; i <= n; i++) scanf(\"%d\", &a[i]);\n    for (int i = n + 1; i <= 2 * n; i++) a[i] = a[i - n];\n    for (int i = 1; i <= 2 * n; i++) pre[i] = pre[i - 1] + a[i];\n\n    memset(fmin, 0x3f, sizeof(fmin));\n    memset(fmax, 0, sizeof(fmax));\n    for (int i = 1; i <= 2 * n; i++) {\n        fmin[i][i] = 0;\n        fmax[i][i] = 0;\n    }\n\n    for (int len = 2; len <= n; len++) {\n        for (int i = 1; i + len - 1 <= 2 * n; i++) {\n            int j = i + len - 1;\n            int best_min = INF, best_max = 0;\n            for (int k = i; k < j; k++) {\n                int mn = fmin[i][k] + fmin[k + 1][j];\n                int mx = fmax[i][k] + fmax[k + 1][j];\n                if (mn < best_min) best_min = mn;\n                if (mx > best_max) best_max = mx;\n            }\n            int cost = (int)(pre[j] - pre[i - 1]);\n            fmin[i][j] = best_min + cost;\n            fmax[i][j] = best_max + cost;\n        }\n    }\n\n    int ans_min = INF, ans_max = 0;\n    for (int i = 1; i <= n; i++) {\n        int v1 = fmin[i][i + n - 1];\n        int v2 = fmax[i][i + n - 1];\n        if (v1 < ans_min) ans_min = v1;\n        if (v2 > ans_max) ans_max = v2;\n    }\n    printf(\"%d\\n%d\\n\", ans_min, ans_max);\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-F",
+    "title": "传送 2.0（修复道路）",
+    "chapter": 12,
+    "description": "从前，在一个王国中，在 n 个城市间有 m 条道路连接，而且任意两个城市之间至多有一条道路直接相连。在经过一次严重的战争之后，有 d 条道路被破坏了。国王想要修复国家的道路系统，现在有两个重要城市 A 和 B 之间的交通中断，国王希望尽快恢复两个城市之间的连接。你的任务就是修复一些道路使 A 与 B 之间的连接恢复，并要求修复的道路长度最小。\n\n提示：未破坏的边代价为 0，被破坏的边代价为其长度，跑最短路即可。",
+    "input": "输入文件第一行为一个整数 n (2 < n ≤ 100)，表示城市的个数，城市编号从 1 到 n。\n第二行为一个整数 m (n-1 ≤ m ≤ n(n-1)/2)，表示道路的数目。\n接下来的 m 行，每行 3 个整数 i, j, k (1 ≤ i, j ≤ n, i ≠ j, 0 < k ≤ 100)，表示城市 i 与 j 之间有一条长为 k 的道路相连。\n接下来一行为一个整数 d (1 ≤ d ≤ m)，表示战后被破坏的道路数目。在接下来的 d 行中，每行两个整数 i 和 j，表示城市 i 与 j 之间直接相连的道路被破坏。\n最后一行为两个整数 A 和 B，代表需要恢复交通的两个重要城市。",
+    "output": "输出仅一个整数，表示恢复 A 与 B 间的交通需要修复的道路总长度的最小值。",
+    "sampleInput": "3\n2\n1 2 1\n2 3 2\n1\n1 2\n1 3",
+    "sampleOutput": "1\n",
+    "answer": "#include <stdio.h>\n#include <string.h>\n\n/*\n * F - 传送 2.0 (修复道路)\n * 未被破坏的边代价 0, 被破坏的边代价为其长度(需要修复)。\n * 求 A 到 B 的最短代价 -> Dijkstra, n <= 100\n */\nstatic long long w[105][105];   /* -1 表示无边 */\nstatic int broken[105][105];\nstatic long long dist[105];\nstatic int done[105];\n\nint main(void) {\n    int n, m;\n    if (scanf(\"%d %d\", &n, &m) != 2) return 0;\n    memset(w, -1, sizeof(w));\n    for (int i = 0; i < m; i++) {\n        int u, v, k;\n        scanf(\"%d %d %d\", &u, &v, &k);\n        w[u][v] = k;\n        w[v][u] = k;\n    }\n    int d;\n    scanf(\"%d\", &d);\n    for (int i = 0; i < d; i++) {\n        int u, v;\n        scanf(\"%d %d\", &u, &v);\n        broken[u][v] = 1;\n        broken[v][u] = 1;\n    }\n    int A, B;\n    scanf(\"%d %d\", &A, &B);\n\n    for (int i = 1; i <= n; i++) dist[i] = -1;\n    dist[A] = 0;\n    for (int it = 0; it < n; it++) {\n        int u = -1;\n        long long best = -1;\n        for (int i = 1; i <= n; i++) {\n            if (!done[i] && dist[i] >= 0 && (best < 0 || dist[i] < best)) {\n                best = dist[i];\n                u = i;\n            }\n        }\n        if (u < 0) break;\n        done[u] = 1;\n        for (int v = 1; v <= n; v++) {\n            if (w[u][v] < 0) continue;\n            long long c = broken[u][v] ? w[u][v] : 0;\n            long long nd = dist[u] + c;\n            if (dist[v] < 0 || nd < dist[v]) dist[v] = nd;\n        }\n    }\n    printf(\"%lld\\n\", dist[B] < 0 ? 0 : dist[B]);\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-G",
+    "title": "逆序对",
+    "chapter": 12,
+    "description": "猫猫 TOM 和小老鼠 JERRY 最近又较量上了，但是毕竟都是成年人，他们已经不喜欢再玩那种你追我赶的游戏，现在他们喜欢玩统计。\n\n最近 TOM 老猫查阅到一个人类称之为「逆序对」的东西，这东西是这样定义的：对于给定的一段正整数序列，逆序对就是序列中 a_i > a_j 且 i < j 的有序对。知道这概念后，他们就比赛谁先算出给定的一段正整数序列中逆序对的数目。注意序列中可能有重复数字。\n\n提示：n 可达 5×10^5，O(n²) 会超时；用归并排序或树状数组。",
+    "input": "第一行，一个数 n (1 ≤ n ≤ 5×10^5)，表示序列中有 n 个数。\n第二行 n 个数，表示给定的序列，序列中每个数字不超过 10^9。",
+    "output": "输出序列中逆序对的数目。",
+    "sampleInput": "6\n5 4 2 6 3 1",
+    "sampleOutput": "11\n",
+    "answer": "#include <stdio.h>\n\n/* G - 逆序对: 归并排序统计, 答案可达 n(n-1)/2, 用 long long */\nstatic long long a[500005], tmp[500005];\n\nstatic long long msort(int l, int r) { /* 区间 [l, r) */\n    if (r - l <= 1) return 0;\n    int mid = (l + r) / 2;\n    long long cnt = msort(l, mid) + msort(mid, r);\n    int i = l, j = mid, k = l;\n    while (i < mid && j < r) {\n        if (a[i] <= a[j]) {\n            tmp[k++] = a[i++];\n        } else {\n            cnt += mid - i;      /* a[i..mid-1] 都大于 a[j] */\n            tmp[k++] = a[j++];\n        }\n    }\n    while (i < mid) tmp[k++] = a[i++];\n    while (j < r) tmp[k++] = a[j++];\n    for (int t = l; t < r; t++) a[t] = tmp[t];\n    return cnt;\n}\n\nint main(void) {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    for (int i = 0; i < n; i++) scanf(\"%lld\", &a[i]);\n    printf(\"%lld\\n\", msort(0, n));\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-H",
+    "title": "食物链",
+    "chapter": 12,
+    "description": "动物王国中有三类动物 A, B, C，这三类动物的食物链构成了有趣的环形：A 吃 B，B 吃 C，C 吃 A。\n\n现有 N 个动物，以 1~N 编号。每个动物都是 A, B, C 中的一种，但是我们并不知道它到底是哪一种。\n\n有人用两种说法对这 N 个动物所构成的食物链关系进行描述：\n· 第一种说法是 1 X Y，表示 X 和 Y 是同类；\n· 第二种说法是 2 X Y，表示 X 吃 Y。\n\n此人对 N 个动物，用上述两种说法，一句接一句地说出 K 句话，这 K 句话有的是真的，有的是假的。当一句话满足下列三条之一时，这句话就是假话，否则就是真话：\n· 当前的话与前面的某些真的话冲突；\n· 当前的话中 X 或 Y 比 N 大；\n· 当前的话表示 X 吃 X。\n\n你的任务是根据给定的 N 和 K 句话，输出假话的总数。\n\n数据范围：1 ≤ N ≤ 5×10^4，1 ≤ K ≤ 10^5，|X|, |Y| < 2^32。",
+    "input": "第一行两个整数 N, K，表示有 N 个动物，K 句话。\n第二行开始每行一句话，格式见题目描述与样例。",
+    "output": "一行，一个整数，表示假话的总数。",
+    "sampleInput": "100 7\n1 101 1\n2 1 2\n2 2 3\n2 3 3\n1 1 3\n2 3 1\n1 5 5",
+    "sampleOutput": "3\n",
+    "answer": "#include <stdio.h>\n\n/*\n * H - 食物链 (带权并查集)\n * rel[x] 表示 x 与父节点的关系: 0 同类, 1 x 吃父, 2 父吃 x (模 3 循环)\n * 同集合内 d(x,y) = (rel[x] - rel[y] + 3) % 3: 0 同类, 1 x 吃 y, 2 y 吃 x\n */\nstatic int fa[50005], rel[50005];\n\nstatic int find(int x) {\n    if (fa[x] == x) return x;\n    int root = find(fa[x]);\n    rel[x] = (rel[x] + rel[fa[x]]) % 3;\n    fa[x] = root;\n    return root;\n}\n\nint main(void) {\n    int n, k;\n    if (scanf(\"%d %d\", &n, &k) != 2) return 0;\n    for (int i = 1; i <= n; i++) {\n        fa[i] = i;\n        rel[i] = 0;\n    }\n\n    int ans = 0;\n    while (k--) {\n        int op, x, y;\n        scanf(\"%d %d %d\", &op, &x, &y);\n        if (x > n || y > n) { ans++; continue; }        /* 编号越界 */\n        if (op == 2 && x == y) { ans++; continue; }     /* x 吃 x */\n\n        int rx = find(x), ry = find(y);\n        if (rx == ry) {\n            int d = (rel[x] - rel[y] + 3) % 3;\n            if (op == 1 && d != 0) ans++;\n            if (op == 2 && d != 1) ans++;\n        } else {\n            fa[rx] = ry;\n            if (op == 1) rel[rx] = (rel[y] - rel[x] + 3) % 3;\n            else rel[rx] = (rel[y] - rel[x] + 1 + 3) % 3;\n        }\n    }\n    printf(\"%d\\n\", ans);\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-I",
+    "title": "Money Buys Happiness",
+    "chapter": 12,
+    "description": "身为物理学家的 Charlie 喜欢用简单而精确的方式规划人生。\n\n在接下来的 m 个月里，Charlie 起初没有积蓄，他努力工作，每月赚取 x 英镑。在第 i 个月 (1 ≤ i ≤ m)，会有一次花费 c_i 英镑获取 h_i 点快乐的机会。\n\n不允许借钱。第 i 个月赚到的钱只能在此后的第 j 个月 (j > i) 花掉；也就是说，在第 i 个月购买物品时，手上可支配的钱只有前 i-1 个月赚到的。\n\n既然物理学家不会写代码，请你帮 Charlie 求出能获得的最大快乐值总和。\n\n提示：dp[h] = 获得 h 点快乐的最少花费，按月份逐个物品做 0/1 背包（逆序枚举 h），购买条件为 dp[h] + c_i ≤ (i-1)·x。",
+    "input": "输入第一行包含一个整数 t (1 ≤ t ≤ 1000)，表示测试用例数。\n每个测试用例的第一行包含两个整数 m, x (1 ≤ m ≤ 50, 1 ≤ x ≤ 10^8)，表示月份总数和月薪。\n接下来 m 行，每行包含两个整数 c_i, h_i (0 ≤ c_i ≤ 10^8, 1 ≤ h_i ≤ 10^3)，表示第 i 个月的机会。\n保证所有测试用例的 Σh_i 不超过 10^5。",
+    "output": "对于每个测试用例，输出一个整数，表示 Charlie 能获得的最大快乐值总和。",
+    "sampleInput": "7\n1 10\n1 5\n2 80\n0 10\n200 100\n3 100\n70 100\n100 200\n150 150\n5 8\n3 1\n5 3\n3 4\n1 5\n5 3\n2 5\n1 5\n2 1\n5 3\n2 5\n2 4\n4 1\n5 1\n3 4\n5 2\n2 1\n1 2\n3 5\n3 2\n3 2",
+    "sampleOutput": "0\n10\n200\n15\n1\n9\n9\n",
+    "answer": "#include <stdio.h>\n#include <string.h>\n\n/*\n * I - Money Buys Happiness\n * 第 i 个月只能买第 i 件物品, 购买前可用总钱数为 (i-1)*x。\n * dp[h] = 获得 h 点快乐所需的最少花费; 逆序枚举 h 保证每月只用一次。\n */\n#define MAXH 100005\n#define INF 0x3f3f3f3f3f3f3f3fLL\n\nstatic long long dp[MAXH];\nstatic long long c[55], h[55];\n\nint main(void) {\n    int t;\n    if (scanf(\"%d\", &t) != 1) return 0;\n    while (t--) {\n        int m;\n        long long x;\n        scanf(\"%d %lld\", &m, &x);\n        long long total = 0;\n        for (int i = 1; i <= m; i++) {\n            scanf(\"%lld %lld\", &c[i], &h[i]);\n            total += h[i];\n        }\n\n        for (long long j = 0; j <= total; j++) dp[j] = INF;\n        dp[0] = 0;\n\n        for (int i = 1; i <= m; i++) {\n            long long money = (long long)(i - 1) * x;   /* 该月可支配总额 */\n            for (long long j = total - h[i]; j >= 0; j--) {\n                if (dp[j] == INF) continue;\n                if (dp[j] + c[i] <= money && dp[j] + c[i] < dp[j + h[i]])\n                    dp[j + h[i]] = dp[j] + c[i];\n            }\n        }\n\n        long long ans = 0;\n        for (long long j = total; j >= 0; j--) {\n            if (dp[j] != INF) { ans = j; break; }\n        }\n        printf(\"%lld\\n\", ans);\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-J",
+    "title": "多边形游戏",
+    "chapter": 12,
+    "description": "The Frontman greets you to this final round of the survival game.\n\n有一个正 n 边形 (n ≥ 3)，顶点按顺时针编号 1, 2, …, n。在每个顶点 i 上写有一个正整数 a_i。\n\n初始分数为 0。你可以进行任意多次如下操作：\n· 选择 3 个此前未被选择过的不同顶点 i, j, k，画出以这三个顶点构成的三角形；\n  · 该次操作使你的分数增加 a_i · a_j · a_k；\n  · 但是，如果这个三角形与之前画出的任意三角形有正的公共面积，则不能进行该操作。\n\n你的目标是最大化分数，请输出能得到的最大分数。\n\n提示：所选三角形两两不重叠且顶点不重复，可化为区间 DP：把环复制成长度 2n 的链，f[i][j] 表示区间 [i..j] 的最大得分，按「区间最左顶点 i 所属三角形」分解。",
+    "input": "每个测试点包含多组测试数据。第一行包含测试用例数 t (1 ≤ t ≤ 10^4)。\n每个测试用例的第一行包含一个整数 n (3 ≤ n ≤ 400)，表示顶点数。\n第二行包含 a_1, a_2, …, a_n (1 ≤ a_i ≤ 1000)。\n保证所有测试用例的 Σn³ 不超过 400³。",
+    "output": "对于每个测试用例，输出一行最大分数。",
+    "sampleInput": "6\n3\n1 2 3\n4\n2 1 3 4\n6\n2 1 2 1 1 1\n6\n1 2 1 3 1 5\n9\n9 9 8 2 4 4 3 5 3\n9\n9 9 3 2 4 4 8 5 3",
+    "sampleOutput": "6\n24\n5\n30\n732\n696\n",
+    "answer": "#include <stdio.h>\n#include <string.h>\n\n/*\n * J - 多边形游戏\n * 在凸多边形中选若干两两不重叠、顶点不重复的三角形, 使乘积之和最大。\n * 环复制成长度 2n 的链, f[i][j] 表示区间 [i..j] 的最大得分(长度 <= n)。\n * 按区间最左顶点 i 的归属分解:\n *   f[i][j] = max( f[i+1][j], max_{l} ( C[i][l] + f[l+1][j] ) )\n *   C[i][l] = max_{k} ( f[i+1][k-1] + a_i*a_k*a_l + f[k+1][l-1] )\n * 整体 O(n^3)。\n */\n#define MAX2 810\n\nstatic long long a[MAX2];\nstatic long long f[MAX2][MAX2];\nstatic long long C[MAX2][MAX2];\n\nint main(void) {\n    int t;\n    if (scanf(\"%d\", &t) != 1) return 0;\n    while (t--) {\n        int n;\n        scanf(\"%d\", &n);\n        for (int i = 1; i <= n; i++) scanf(\"%lld\", &a[i]);\n        for (int i = n + 1; i <= 2 * n + 2; i++) a[i] = a[i - n];\n        int N2 = 2 * n;\n\n        for (int i = 0; i <= N2 + 2; i++)\n            for (int j = 0; j <= N2 + 2; j++) { f[i][j] = 0; C[i][j] = 0; }\n\n        for (int len = 3; len <= n; len++) {\n            for (int i = 1; i + len - 1 <= N2; i++) {\n                int j = i + len - 1;\n\n                /* C[i][j] = max_k ( f[i+1][k-1] + a_i a_k a_j + f[k+1][j-1] ) */\n                long long cbest = 0;\n                for (int k = i + 1; k < j; k++) {\n                    long long v = f[i + 1][k - 1] + a[i] * a[k] * a[j] + f[k + 1][j - 1];\n                    if (v > cbest) cbest = v;\n                }\n                C[i][j] = cbest;\n\n                /* f[i][j] = max( f[i+1][j], max_l ( C[i][l] + f[l+1][j] ) ) */\n                long long best = f[i + 1][j];\n                for (int l = i + 2; l <= j; l++) {\n                    long long v = C[i][l] + f[l + 1][j];\n                    if (v > best) best = v;\n                }\n                f[i][j] = best;\n            }\n        }\n\n        long long ans = 0;\n        for (int i = 1; i <= n; i++)\n            if (f[i][i + n - 1] > ans) ans = f[i][i + n - 1];\n        printf(\"%lld\\n\", ans);\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-K",
+    "title": "树上最小 f 值",
+    "chapter": 12,
+    "description": "给定一棵包含 n 个顶点的树，其中部分顶点被标记。树是指没有环的连通无向图。\n\n定义 f_i 为顶点 i 到所有被标记顶点的最大距离。\n\n你的任务是找出所有顶点中最小的 f_i 值。\n\n【示例说明】示例中的树，顶点 2、6、7 被标记时，数组 f(i) = [2,3,2,4,4,3,3]，最小的 f_i 值出现在顶点 1 和 3 上，答案为 2。\n\n提示：答案等于 ceil(D / 2)，其中 D 是被标记点集合在树上的直径（最远两个被标记点的距离）。两次 BFS 即可求出。",
+    "input": "第一行包含整数 t (1 ≤ t ≤ 10^4)，表示测试用例数量。\n每个测试用例的第一行包含两个整数 n 和 k (1 ≤ k ≤ n ≤ 2×10^5)，分别表示树的顶点数和被标记顶点数。\n第二行包含 k 个整数 a_i (1 ≤ a_i ≤ n, a_{i-1} < a_i)，表示被标记顶点的编号。\n接下来 n-1 行每行包含两个整数 u_i 和 v_i，表示一条边连接的两个顶点。\n保证所有测试用例的 n 之和不超过 2×10^5。",
+    "output": "对于每个测试用例，输出一行一个整数，表示所有顶点中最小的 f_i 值。",
+    "sampleInput": "4\n7 3\n2 6 7\n1 2\n1 3\n2 4\n2 5\n3 6\n3 7\n4 4\n1 2 3 4\n1 2\n2 3\n3 4\n5 1\n1\n1 2\n1 3\n1 4\n1 5\n10 8\n1 2 3 4 5 8 9 10\n2 10\n10 5\n5 3\n3 1\n1 7\n7 4\n4 9\n9 6\n6 8",
+    "sampleOutput": "2\n2\n0\n5\n",
+    "answer": "#include <stdio.h>\n\n/*\n * K - 树上最小 f 值\n * f_i = 顶点 i 到所有被标记顶点的最大距离, 求 min f_i。\n * 结论: 答案 = ceil(D / 2), D 为被标记点集合的直径(树上最远两点距离)。\n * 求直径: 从任一标记点 BFS 到最远标记点 u, 再从 u BFS 得到最大距离即 D。\n */\n#define MAXN 200005\n\nstatic int head[MAXN], nxt[2 * MAXN], to[2 * MAXN], ecnt;\nstatic int ismarked[MAXN], dist[MAXN], que[MAXN];\n\nstatic void add_edge(int u, int v) {\n    to[ecnt] = v;\n    nxt[ecnt] = head[u];\n    head[u] = ecnt++;\n}\n\nstatic void bfs(int src, int n) {\n    for (int i = 1; i <= n; i++) dist[i] = -1;\n    int qh = 0, qt = 0;\n    que[qt++] = src;\n    dist[src] = 0;\n    while (qh < qt) {\n        int u = que[qh++];\n        for (int e = head[u]; e != -1; e = nxt[e]) {\n            int v = to[e];\n            if (dist[v] < 0) {\n                dist[v] = dist[u] + 1;\n                que[qt++] = v;\n            }\n        }\n    }\n}\n\nint main(void) {\n    int T;\n    if (scanf(\"%d\", &T) != 1) return 0;\n    while (T--) {\n        int n, k;\n        scanf(\"%d %d\", &n, &k);\n        ecnt = 0;\n        for (int i = 1; i <= n; i++) {\n            head[i] = -1;\n            ismarked[i] = 0;\n        }\n        int first = -1;\n        for (int i = 0; i < k; i++) {\n            int a;\n            scanf(\"%d\", &a);\n            ismarked[a] = 1;\n            if (first < 0) first = a;\n        }\n        for (int i = 0; i < n - 1; i++) {\n            int u, v;\n            scanf(\"%d %d\", &u, &v);\n            add_edge(u, v);\n            add_edge(v, u);\n        }\n\n        bfs(first, n);\n        int u = first, best = -1;\n        for (int i = 1; i <= n; i++)\n            if (ismarked[i] && dist[i] > best) { best = dist[i]; u = i; }\n\n        bfs(u, n);\n        int D = 0;\n        for (int i = 1; i <= n; i++)\n            if (ismarked[i] && dist[i] > D) D = dist[i];\n\n        printf(\"%d\\n\", (D + 1) / 2);\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-L",
+    "title": "矿区材料（区间赋值与合法性查询）",
+    "chapter": 12,
+    "description": "CYJian 家的矿共出产 A, B, C 三种矿石，所以我们也只能用 A, B, C 三种材料来修复他们家的矿。我们已知共有 N 吨材料，每吨材料均为 A, B, C 三种材料中的一种，它们连成了一个串，如 ABCBCABCBCABAA。\n\nCYJian 家对材料的要求非常严格，他每次会选择一段连续区间的材料作为修复的材料，这个连续区间的材料必须满足以下 2 个要求：\n· 这段连续区间必须是同一种材料；\n· 这段连续区间的前一个材料与后一个材料必须不相同。\n\n例如，有一段材料为 AACBBABBBCCCBB，则 (4~5) 区间的 BB 和 (5~5) 区间的 B 均符合要求，而 (10~12) 区间的 CCC 不符合要求。\n\n材料有灵性，所以材料会有变化。现在有 N 吨材料，K 个询问，每个询问是以下 2 种形式之一：\n· A x y op：将 x 到 y (1 ≤ x ≤ y ≤ N) 区间内的材料替换为 op，op 为 A, B, C 中的一个字符；\n· B x y：询问 x 到 y (1 ≤ x ≤ y ≤ N) 区间内的材料是否合法，合法输出 Yes，不合法输出 No。\n\n注意当 x = 1 或 y = N 时，你的程序不需要判断前后的情况，只需要判断区间内的情况。\n\n数据范围：30% 数据 N ≤ 1000, K ≤ 2000；70% 数据 N ≤ 5000, K ≤ 5000；100% 数据 N ≤ 5×10^5, K ≤ 5×10^5。\n\n提示：线段树维护「区间是否同种材料」+ 区间赋值懒标记。",
+    "input": "第一行一个正整数 N。\n接下来一行 N 个字符，表示材料串。\n接下来一行一个正整数 K。\n接下来 K 行，每行一个询问，格式为上述两种之一。",
+    "output": "对于每个 B x y 的询问，输出一行 Yes 或 No。",
+    "sampleInput": "15\nAACBBABBBCCCBBB\n3\nB 4 5\nB 5 5\nB 10 12",
+    "sampleOutput": "Yes\nYes\nNo\n",
+    "answer": "#include <stdio.h>\n\n/*\n * L - 矿区材料 (区间赋值 + 合法性查询)\n * 线段树维护 \"区间是否同种材料\": same = 0/1/2 统一, -1 混合; lazy 支持区间赋值。\n * 查询 B x y: 区间内必须同种材料; 若 x>1 且 y<N, 还要求 x-1 与 y+1 处材料不同。\n */\n#define MAXN 500005\n\nstatic char s[MAXN + 5];\nstatic int same[4 * MAXN];\nstatic int lazy[4 * MAXN];\n\nstatic void build(int node, int l, int r) {\n    lazy[node] = -1;\n    if (l == r) { same[node] = s[l] - 'A'; return; }\n    int mid = (l + r) >> 1;\n    build(node << 1, l, mid);\n    build(node << 1 | 1, mid + 1, r);\n    same[node] = (same[node << 1] == same[node << 1 | 1]) ? same[node << 1] : -1;\n}\n\nstatic void apply(int node, int c) { same[node] = c; lazy[node] = c; }\n\nstatic void push(int node) {\n    if (lazy[node] != -1) {\n        apply(node << 1, lazy[node]);\n        apply(node << 1 | 1, lazy[node]);\n        lazy[node] = -1;\n    }\n}\n\nstatic void assign_range(int node, int l, int r, int ql, int qr, int c) {\n    if (qr < l || r < ql) return;\n    if (ql <= l && r <= qr) { apply(node, c); return; }\n    push(node);\n    int mid = (l + r) >> 1;\n    assign_range(node << 1, l, mid, ql, qr, c);\n    assign_range(node << 1 | 1, mid + 1, r, ql, qr, c);\n    same[node] = (same[node << 1] == same[node << 1 | 1]) ? same[node << 1] : -1;\n}\n\n/* 返回区间统一材料(0/1/2), 混合返回 -1, 无关返回 -2 */\nstatic int query(int node, int l, int r, int ql, int qr) {\n    if (qr < l || r < ql) return -2;\n    if (ql <= l && r <= qr) return same[node];\n    push(node);\n    int mid = (l + r) >> 1;\n    int x = query(node << 1, l, mid, ql, qr);\n    int y = query(node << 1 | 1, mid + 1, r, ql, qr);\n    if (x == -2) return y;\n    if (y == -2) return x;\n    if (x == -1 || y == -1 || x != y) return -1;\n    return x;\n}\n\nint main(void) {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    scanf(\"%s\", s + 1);\n    build(1, 1, n);\n\n    int K;\n    scanf(\"%d\", &K);\n    char op[8];\n    while (K--) {\n        scanf(\"%s\", op);\n        if (op[0] == 'A') {\n            int x, y;\n            char c[8];\n            scanf(\"%d %d %s\", &x, &y, c);\n            assign_range(1, 1, n, x, y, c[0] - 'A');\n        } else {\n            int x, y;\n            scanf(\"%d %d\", &x, &y);\n            int inside = query(1, 1, n, x, y);\n            int ok = (inside != -1);\n            if (ok && x > 1 && y < n) {\n                int p = query(1, 1, n, x - 1, x - 1);\n                int q = query(1, 1, n, y + 1, y + 1);\n                if (p == q) ok = 0;\n            }\n            printf(\"%s\\n\", ok ? \"Yes\" : \"No\");\n        }\n    }\n    return 0;\n}\n"
+  },
+
+  {
+    "code": "12-M",
+    "title": "多重集第 k 小",
+    "chapter": 12,
+    "description": "注意本题的内存限制有点特别。\n\n给定一个由 n 个整数构成的多重集，你需要处理两种询问：\n· 把一个整数 k 加入多重集；\n· 找出多重集中的第 k 顺序统计量并将其删除。\n\n多重集的第 k 顺序统计量是指把多重集所有元素排序后的第 k 个元素。例如多重集包含元素 1, 4, 2, 1, 4, 5, 7，k = 3 时排序为 [1, 1, 2, 4, 4, 5, 7]，第 3 个元素是 2；若某元素出现多次，删除时只删除其中一个。\n\n处理完所有询问后，输出多重集中的任意一个数；若多重集为空，输出 0。\n\n【说明】本题答案不唯一，判题采用特殊校验：只要输出的数确实属于最终多重集（空集时为 0）即通过。\n\n提示：值域为 1..n，用树状数组维护计数，第 k 小可在树状数组上倍增 O(log n) 求出。",
+    "input": "第一行包含两个整数 n 和 q (1 ≤ n, q ≤ 10^6)，分别表示初始元素个数与询问个数。\n第二行包含 n 个整数 a_1, a_2, …, a_n (1 ≤ a_1 ≤ a_2 ≤ … ≤ a_n ≤ n)，表示初始多重集。\n第三行包含 q 个整数 k_1, k_2, …, k_q，依次表示每个询问：\n· 若 1 ≤ k_i ≤ n，则第 i 个询问是「把 k_i 加入多重集」；\n· 若 k_i < 0，则第 i 个询问是「删除多重集中的第 |k_i| 顺序统计量」（保证 |k_i| 不超过当前多重集大小）。",
+    "output": "如果所有询问结束后多重集为空，输出 0；否则输出多重集中的任意一个整数。",
+    "sampleInput": "5 4\n1 2 3 4 5\n-5 -1 -3 -1",
+    "sampleOutput": "3\n",
+    "answer": "#include <stdio.h>\n\n/*\n * M - 多重集第 k 小\n * 值域 1..n, 树状数组维护每个值的出现次数:\n *   插入 k (k>0) / 删除第 |k| 小 (k<0)\n * 最后输出任意一个剩余元素(这里输出最大值: 第 total 小)。\n * kth 用树状数组上倍增, O(log n)。\n */\n#define MAXN 1000005\n\nstatic int bit[MAXN];\nstatic int maxv, total;\n\nstatic void add(int i, int v) {\n    for (; i <= maxv; i += i & -i) bit[i] += v;\n}\n\nstatic int kth(int k) { /* 第 k 小(1-based) */\n    int pos = 0;\n    int step = 1;\n    while ((step << 1) <= maxv) step <<= 1;\n    for (; step; step >>= 1) {\n        if (pos + step <= maxv && bit[pos + step] < k) {\n            pos += step;\n            k -= bit[pos];\n        }\n    }\n    return pos + 1;\n}\n\nint main(void) {\n    int n, q;\n    if (scanf(\"%d %d\", &n, &q) != 2) return 0;\n    maxv = n;\n    total = 0;\n    for (int i = 0; i < n; i++) {\n        int a;\n        scanf(\"%d\", &a);\n        add(a, 1);\n        total++;\n    }\n    for (int i = 0; i < q; i++) {\n        int k;\n        scanf(\"%d\", &k);\n        if (k > 0) {\n            add(k, 1);\n            total++;\n        } else {\n            int v = kth(-k);\n            add(v, -1);\n            total--;\n        }\n    }\n    if (total == 0) printf(\"0\\n\");\n    else printf(\"%d\\n\", kth(total));\n    return 0;\n}\n",
+    "checker": "multiset-kth"
+  },
+
+  {
+    "code": "12-N",
+    "title": "XOR Array（构造）",
+    "chapter": 12,
+    "description": "You are given three integers n, l, and r.\nYou need to generate an array a of positive (1 ≤ a_i ≤ 10^9) integers of length n. Let f(x, y) = a_x ⊕ a_{x+1} ⊕ … ⊕ a_y (⊕ 表示按位异或). You need to make sure that:\n· f(x, y) = 0 when x = l and y = r;\n· f(x, y) ≠ 0 when x ≠ l or y ≠ r.\n\n【说明】本题答案不唯一，判题采用特殊校验：只要输出满足上述全部条件即通过（不必与样例输出相同）。\n\n提示：记前缀异或 P[0..n]，区间异或为 0 等价于 P[x-1] = P[y]；因此只需让 P 中除 P[l-1] = P[r] 外两两不同。一种构造是 P[i] = i (i ≠ r), P[r] = l-1, 那么 a_i = P[i] ⊕ P[i-1] 全部非 0 且不超过 2^19。",
+    "input": "每个测试点包含多组测试数据。第一行包含测试用例数 t (1 ≤ t ≤ 10^4)。\n每个测试用例只有一行，包含三个整数 n, l, r (2 ≤ n ≤ 4×10^5, 1 ≤ l < r ≤ n)。\n保证所有测试用例的 n 之和不超过 5×10^5。",
+    "output": "对于每个测试用例，输出一行 n 个整数 a_1, a_2, …, a_n。可以证明答案总是存在；若有多种答案，输出任意一种。",
+    "sampleInput": "4\n3 1 3\n4 1 3\n8 2 4\n4 3 4",
+    "sampleOutput": "9 8 1\n2 7 5 4\n9 1 9 8 10 5 4 9\n85484 130377 6031 6031\n",
+    "answer": "#include <stdio.h>\n\n/*\n * N - XOR Array (构造, 答案不唯一)\n * 设前缀异或 P[0..n], 区间 [x,y] 异或为 0 <=> P[x-1] == P[y]。\n * 要求: P[l-1] == P[r], 且其余前缀互不相同。\n * 构造: P[i] = i (i != r), P[r] = l-1; 于是 a_i = P[i] ^ P[i-1]。\n * 所有 a_i 均非 0 且 <= 2^19 左右, 满足 1 <= a_i <= 1e9。\n */\n#define MAXN 400005\n\nstatic long long P[MAXN];\n\nint main(void) {\n    int t;\n    if (scanf(\"%d\", &t) != 1) return 0;\n    while (t--) {\n        int n, l, r;\n        scanf(\"%d %d %d\", &n, &l, &r);\n        for (int i = 0; i <= n; i++) P[i] = i;\n        P[r] = l - 1;\n        for (int i = 1; i <= n; i++) {\n            long long v = P[i] ^ P[i - 1];\n            printf(\"%lld\", v);\n            if (i < n) printf(\" \");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+    "checker": "xor-array"
+  },
+
+  {
+    "code": "12-O",
+    "title": "MAX-MEX Cut",
+    "chapter": 12,
+    "description": "A binary string is a string that consists of characters 0 and 1. A bi-table is a table that has exactly two rows of equal length, each being a binary string.\n\nLet MEX of a bi-table be the smallest digit among 0, 1, or 2 that does not occur in the bi-table. For example, MEX for [[0,0,1,1],[1,0,1,0]] is 2, because 0 and 1 occur in the bi-table at least once; MEX for [[1,1,1],[1,1,1]] is 0, because 0 and 2 do not occur in the bi-table, and 0 < 2.\n\nYou are given a bi-table with n columns. You should cut it into any number of bi-tables (each consisting of consecutive columns) so that each column is in exactly one bi-table. It is possible to cut the bi-table into a single bi-table — the whole bi-table.\n\nWhat is the maximal sum of MEX of all resulting bi-tables?\n\n【中文】给定一个 2×n 的 01 数表，把它切成若干个连续列组成的子表（每列恰好属于一个子表），求所有子表的 MEX 之和的最大值。MEX 指 0、1、2 中最小的未出现过的数字。\n\n提示：混列（01/10）本身的 MEX = 2；均一列「00」单独 MEX = 1、「11」单独 MEX = 0；相邻的「00」与「11」合并后 MEX = 2（比 1+0 多 1），贪心配对即可。",
+    "input": "The input consists of multiple test cases. The first line contains a single integer t (1 ≤ t ≤ 10^4) — the number of test cases.\nThe first line of each test case contains a single integer n (1 ≤ n ≤ 10^5) — the number of columns in the bi-table.\nEach of the next two lines contains a binary string of length n — the rows of the bi-table.\nIt's guaranteed that the sum of n over all test cases does not exceed 10^5。",
+    "output": "For each test case print a single integer — the maximal sum of MEX of all bi-tables that it is possible to get by cutting the given bi-table optimally.",
+    "sampleInput": "4\n7\n0101000\n1101100\n5\n01100\n10101\n2\n01\n01\n6\n000000\n111111",
+    "sampleOutput": "8\n8\n2\n12\n",
+    "answer": "#include <stdio.h>\n\n/*\n * O - MAX-MEX Cut\n * 每一列: 混列(\"01\"/\"10\") 的 MEX = 2; \"00\" 列单独 MEX = 1; \"11\" 列单独 MEX = 0。\n * 若相邻两列都是均一列且字符不同, 合并后包含 0 和 1, MEX = 2 (比 1+0 多 1)。\n * 贪心从左到右: 能配对就配对。\n */\nstatic char s1[200005], s2[200005];\n\nint main(void) {\n    int t;\n    if (scanf(\"%d\", &t) != 1) return 0;\n    while (t--) {\n        int n;\n        scanf(\"%d\", &n);\n        scanf(\"%s\", s1);\n        scanf(\"%s\", s2);\n        long long ans = 0;\n        int i = 0;\n        while (i < n) {\n            if (s1[i] != s2[i]) {\n                ans += 2;\n                i++;\n            } else if (i + 1 < n && s1[i + 1] == s2[i + 1] && s1[i + 1] != s1[i]) {\n                ans += 2;\n                i += 2;\n            } else {\n                ans += (s1[i] == '0') ? 1 : 0;\n                i++;\n            }\n        }\n        printf(\"%lld\\n\", ans);\n    }\n    return 0;\n}\n"
   }
 ]
