@@ -27,6 +27,12 @@ interface Props {
   judging?: boolean;
   /** 打开自定义输入运行面板(携带当前编辑器代码) */
   onOpenRun?: (code: string) => void;
+  /** 编辑器区域高度(px), 由外部拖拽调节 */
+  height?: number;
+  /** 一键展开/还原代码区(可选) */
+  onToggleMaximize?: () => void;
+  /** 当前是否处于展开(最大化)状态 */
+  maximized?: boolean;
 }
 
 type Tip = { kind: "ok" | "err" | "info"; text: string } | null;
@@ -50,6 +56,9 @@ export default function CodeEditor({
   onJudge,
   judging = false,
   onOpenRun,
+  height = 320,
+  onToggleMaximize,
+  maximized = false,
 }: Props) {
   const [code, setCode] = useState(initialCode);
   const [tip, setTip] = useState<Tip>(null);
@@ -131,9 +140,9 @@ export default function CodeEditor({
   };
 
   return (
-    <div className="flex h-80 shrink-0 flex-col border-t border-border">
+    <div className="flex shrink-0 flex-col border-t border-border" style={{ height }}>
       {/* 工具栏 */}
-      <div className="flex items-center justify-between border-b border-border bg-[#252526] px-4 py-1.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-[#252526] px-4 py-1.5">
         <span className="font-mono text-xs text-muted">{problem.code} · main.c</span>
         <div className="flex items-center gap-3">
           {/* 语法检查状态 */}
@@ -144,6 +153,15 @@ export default function CodeEditor({
             {issueCount > 0 ? `⚠ ${issueCount} 个语法问题` : "✓ 语法检查通过"}
           </span>
           {tip && <span className={`text-xs ${TIP_STYLE[tip.kind]}`}>{tip.text}</span>}
+          {onToggleMaximize && (
+            <button
+              onClick={onToggleMaximize}
+              title={maximized ? "还原代码区高度" : "展开代码区(占满可用高度)"}
+              className="rounded border border-border px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              {maximized ? "⤡ 还原" : "⤢ 全屏代码"}
+            </button>
+          )}
           <button
             onClick={handleSave}
             className="rounded bg-accent px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-[#0e8ae0]"

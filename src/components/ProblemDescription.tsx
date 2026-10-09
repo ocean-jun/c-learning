@@ -33,7 +33,7 @@ export default function ProblemDescription({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-5">
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold">
           <span className="mr-2 font-mono text-base text-muted">{problem.code}</span>

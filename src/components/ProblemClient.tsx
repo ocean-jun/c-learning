@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { JudgeResult, ProblemWithStatus, RunResult, Submission } from "@/lib/types";
 import ProblemList from "./ProblemList";
@@ -8,6 +8,34 @@ import ProblemDescription from "./ProblemDescription";
 import SubmissionList from "./SubmissionList";
 import JudgeResultPanel from "./JudgeResultPanel";
 import RunPanel from "./RunPanel";
+import Splitter from "./Splitter";
+
+/** 布局偏好本地存储 key */
+const LAYOUT_KEY = "clab.layout.v1";
+const DEFAULT_EDITOR_HEIGHT = 320;
+const DEFAULT_SIDE_WIDTH = 256;
+const MIN_EDITOR_HEIGHT = 160;
+/** 题目描述区至少保留的高度(px) */
+const MIN_DESC_HEIGHT = 140;
+const MIN_SIDE_WIDTH = 180;
+const MAX_SIDE_WIDTH = 560;
+
+/** 读取本地保存的布局偏好 */
+function readLayout(): { editorHeight: number; sideWidth: number } {
+  const fallback = { editorHeight: DEFAULT_EDITOR_HEIGHT, sideWidth: DEFAULT_SIDE_WIDTH };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return fallback;
+    const v = JSON.parse(raw) as { editorHeight?: unknown; sideWidth?: unknown };
+    return {
+      editorHeight: typeof v.editorHeight === "number" ? v.editorHeight : fallback.editorHeight,
+      sideWidth: typeof v.sideWidth === "number" ? v.sideWidth : fallback.sideWidth,
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 // Monaco 依赖浏览器 API(window), 只能在客户端加载, SSR 时渲染占位
 const CodeEditor = dynamic(() => import("./CodeEditor"), {
@@ -63,6 +91,93 @@ export default function ProblemClient({
   const [answerOpen, setAnswerOpen] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerLoading, setAnswerLoading] = useState(false);
+
+  /* ---- 可调节布局: 代码区高度 / 右栏宽度 ---- */
+  const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT);
+  const [sideWidth, setSideWidth] = useState(DEFAULT_SIDE_WIDTH);
+  const [colHeight, setColHeight] = useState(0);
+  const [bottomHeight, setBottomHeight] = useState(0);
+  const colRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  /** 代码区允许的最大高度: 中间栏高度 - 描述区最小高度 - 下方面板高度 */
+  const maxEditorHeight = Math.max(
+    MIN_EDITOR_HEIGHT,
+    (colHeight || 620) - MIN_DESC_HEIGHT - bottomHeight,
+  );
+  const clampEditorHeight = useCallback(
+    (h: number) => Math.min(Math.max(Math.round(h), MIN_EDITOR_HEIGHT), maxEditorHeight),
+    [maxEditorHeight],
+  );
+  const clampSideWidth = useCallback(
+    (w: number) => Math.min(Math.max(Math.round(w), MIN_SIDE_WIDTH), MAX_SIDE_WIDTH),
+    [],
+  );
+
+  /** 展开前的代码区高度, 用于「还原」 */
+  const prevEditorHeightRef = useRef(DEFAULT_EDITOR_HEIGHT);
+  const maximized = editorHeight >= maxEditorHeight - 4;
+  const handleToggleMaximize = useCallback(() => {
+    if (editorHeight >= maxEditorHeight - 4) {
+      setEditorHeight(clampEditorHeight(prevEditorHeightRef.current));
+    } else {
+      prevEditorHeightRef.current = editorHeight;
+      setEditorHeight(maxEditorHeight);
+    }
+  }, [clampEditorHeight, editorHeight, maxEditorHeight]);
+
+  /* 首次挂载: 恢复上次的布局 */
+  useEffect(() => {
+    const saved = readLayout();
+    setEditorHeight((h) => (saved.editorHeight === DEFAULT_EDITOR_HEIGHT ? h : saved.editorHeight));
+    setSideWidth(saved.sideWidth);
+  }, []);
+
+  /* 布局变化后持久化(节流, 避免拖动时频繁写入) */
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(LAYOUT_KEY, JSON.stringify({ editorHeight, sideWidth }));
+      } catch {
+        /* 隐私模式等场景忽略 */
+      }
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [editorHeight, sideWidth]);
+
+  /* 测量中间栏与下方面板的真实高度, 用于钳制 */
+  useEffect(() => {
+    const col = colRef.current;
+    if (!col) return;
+    const bottom = bottomRef.current;
+    const measure = () => {
+      setColHeight(col.clientHeight);
+      setBottomHeight(bottom ? bottom.clientHeight : 0);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(col);
+    if (bottom) ro.observe(bottom);
+    return () => ro.disconnect();
+  }, [runPanelOpen, judgeResult]);
+
+  /* 窗口/面板尺寸变化时, 自动把代码区高度收回可用范围 */
+  useEffect(() => {
+    setEditorHeight((h) => clampEditorHeight(h));
+  }, [clampEditorHeight]);
+
+  /* 快捷键: Ctrl/Cmd + Shift + ↑/↓ 快速伸缩代码区 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const dir = e.key === "ArrowUp" ? 1 : -1;
+      setEditorHeight((h) => clampEditorHeight(h + dir * 80));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clampEditorHeight]);
 
   /** 保存代码: 返回是否成功, 供编辑器显示提示 */
   const handleSave = useCallback(
@@ -218,7 +333,7 @@ export default function ProblemClient({
         </button>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col" ref={colRef}>
         <ProblemDescription
           problem={problem}
           answer={answerOpen ? answer : undefined}
@@ -244,9 +359,21 @@ export default function ProblemClient({
             </>
           }
         />
+
+        {/* 分割条: 上下拖动调整代码区高度(描述区同步变化) */}
+        <Splitter
+          orientation="horizontal"
+          label="拖动调整代码区高度"
+          onDrag={(delta) => setEditorHeight((h) => clampEditorHeight(h - delta))}
+          onReset={() => setEditorHeight(DEFAULT_EDITOR_HEIGHT)}
+        />
+
         <CodeEditor
           problem={problem}
           initialCode={lastCode}
+          height={editorHeight}
+          onToggleMaximize={handleToggleMaximize}
+          maximized={maximized}
           onSave={handleSave}
           onJudge={handleJudge}
           judging={judging}
@@ -255,17 +382,28 @@ export default function ProblemClient({
             setRunPanelOpen(true);
           }}
         />
-        {runPanelOpen && (
-          <RunPanel
-            sampleInput={problem.sampleInput}
-            running={running}
-            onRun={handleRun}
-            onClose={() => setRunPanelOpen(false)}
-          />
-        )}
-        <JudgeResultPanel result={judgeResult} judging={judging} />
+
+        <div ref={bottomRef} className="shrink-0">
+          {runPanelOpen && (
+            <RunPanel
+              sampleInput={problem.sampleInput}
+              running={running}
+              onRun={handleRun}
+              onClose={() => setRunPanelOpen(false)}
+            />
+          )}
+          <JudgeResultPanel result={judgeResult} judging={judging} />
+        </div>
       </div>
-      <SubmissionList submissions={submissions} />
+
+      {/* 分割条: 左右拖动调整提交记录栏宽度 */}
+      <Splitter
+        orientation="vertical"
+        label="拖动调整提交记录栏宽度"
+        onDrag={(delta) => setSideWidth((w) => clampSideWidth(w - delta))}
+        onReset={() => setSideWidth(DEFAULT_SIDE_WIDTH)}
+      />
+      <SubmissionList submissions={submissions} width={sideWidth} />
     </div>
   );
 }

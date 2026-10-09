@@ -2,6 +2,8 @@ import type { Submission } from "@/lib/types";
 
 interface Props {
   submissions: Submission[];
+  /** 右栏宽度(px), 由外部拖拽调节 */
+  width?: number;
 }
 
 const STATUS_VIEW: Record<string, { label: string; cls: string }> = {
@@ -13,9 +15,12 @@ const STATUS_VIEW: Record<string, { label: string; cls: string }> = {
 };
 
 /** 题目页右栏: 提交记录 */
-export default function SubmissionList({ submissions }: Props) {
+export default function SubmissionList({ submissions, width = 256 }: Props) {
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col overflow-y-auto border-l border-border bg-[#252526]">
+    <aside
+      style={{ width }}
+      className="flex h-full shrink-0 flex-col overflow-y-auto border-l border-border bg-[#252526]"
+    >
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">提交记录</h2>
         <p className="mt-0.5 text-xs text-muted">共 {submissions.length} 次</p>
